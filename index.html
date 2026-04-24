@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body>
+<style type="text/css">
+#output
+{
+    background-color: #B0B1C0;
+}
+#output p
+{
+    border: 1px solid #CEECEF;
+    margin-bottom: 1em;
+    padding: 0.5em;
+    background-color: #FEEFFF;
+}
+#output blockquote, #output ul, #output ol, #output dl
+{
+    margin-left: 2em;
+    border: 1px solid #CEECEF;
+    margin-bottom: 1em;
+    padding: 0.5em;
+    background-color: #FEEFFF;
+}
+#output p::before, #output blockquote::before, #output img::before, #output ul::before, #output ol::before, #output dl::before
+{
+    content:attr(data-num);
+    ---------border: 1px solid red;
+    position:relative;
+    left:-1em;
+    top:-1em;
+    font-size:0.4rem;
+}
+#output h1::before, #output h2::before, #output h3::before, #output h4::before, #output h5::before, #output h6::before, #output h7::before
+{
+    content:attr(data-num);
+    -------border: 1px solid red;
+    position:relative;
+    left:0;
+    top:0;
+    font-size:0.4rem;
+}
+#output img
+{
+    max-width: 100%;
+}
+#output
+{
+    margin-left:auto;
+    margin-right:auto;
+    width: 80%;
+    z-index:99999;
+    position: relative;
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    font-size: 1.0rem;
+    line-height: 1.5rem;
+}
+#target, #depthinfo,#toc
+{
+    width: 300px;
+    height:280px;
+    border: 1px solid black;
+    overflow: scroll;
+    display:inline-block;
+}
+</style>
+<script src="peeler.js"></script>
+<div id="target" contenteditable></div><ul id="depthinfo"></ul><ol id="toc"></ol><br />
+<button id="scrape">go</button><input type="range" min="0" max="10" id="scraperdepth" /><span>Skip first </span><input type="number" id="skipfirst" value="0" /><span> and last </span><input value="0" type="number" id="skiplast" /><span> blocks.</span>
+<div id="output"></div>
+<script>
+let input=document.getElementById("target");
+let output=document.getElementById("output");
+let depthslider = document.getElementById("scraperdepth");
+let depthinfo = document.getElementById("depthinfo");
+let gobutton=document.getElementById("scrape");
+let toc = document.getElementById("toc");
+let skiplast = document.getElementById("skiplast");
+let skipfirst = document.getElementById("skipfirst");
+gobutton.addEventListener("click",(e)=>{
+    let doc = scrape(input,depthslider.value);
+
+    doc = doc.slice(skipfirst.value,skiplast.value==0?undefined:-skiplast.value);
+    // output the elements
+    
+    output.innerHTML="";
+    let headers = docOut(doc,output);
+    toc.innerHTML="";
+    for(let i=0;i<headers.length;i++)
+    {
+        let li=document.createElement("li");
+        let a = document.createElement("a");
+        a.href="#header"+i;
+        a.innerText=headers[i];
+        li.appendChild(a);
+        toc.appendChild(li);
+    }
+});
+depthslider.addEventListener("input",(e)=>{
+    depthinfo.innerHTML="";
+    let elements = flatten(input.childNodes,depthslider.value);
+    let tags = {};
+    elements.forEach(element => {
+        if(!tags[element.nodeName])
+        {
+            tags[element.nodeName]=1;
+        }
+        else
+        {
+            tags[element.nodeName]++;
+        }
+    });
+    Object.entries(tags).forEach((tag)=>{
+        let li = document.createElement("li");
+        let t="<"+tag[0]+"> x"+tag[1];
+        li.appendChild(document.createTextNode(t));
+        depthinfo.appendChild(li);
+    });
+});
+input.addEventListener("blur",(e)=>{
+depthslider.dispatchEvent(new Event("input"));})
+</script>
+</body>
+</html>
