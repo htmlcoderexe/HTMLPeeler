@@ -79,14 +79,15 @@ let toc = document.getElementById("toc");
 let skiplast = document.getElementById("skiplast");
 let skipfirst = document.getElementById("skipfirst");
 gobutton.addEventListener("click",(e)=>{
-    let doc = scrape(input,depthslider.value);
-
-    doc = doc.slice(skipfirst.value,skiplast.value==0?undefined:-skiplast.value);
-    // output the elements
+    let scraper = new HTMLPeeler(input);
+    scraper.depth=depthslider.value;
+    scraper.scrape();
+    console.error("DONE SCRAPING WITH CLASS");
     
     output.innerHTML="";
-    let headers = docOut(doc,output);
+    scraper.outputHTMLDoc(output,skipfirst.value,skiplast.value);
     toc.innerHTML="";
+    let headers = scraper.headers;
     for(let i=0;i<headers.length;i++)
     {
         let li=document.createElement("li");
@@ -99,18 +100,9 @@ gobutton.addEventListener("click",(e)=>{
 });
 depthslider.addEventListener("input",(e)=>{
     depthinfo.innerHTML="";
-    let elements = flatten(input.childNodes,depthslider.value);
-    let tags = {};
-    elements.forEach(element => {
-        if(!tags[element.nodeName])
-        {
-            tags[element.nodeName]=1;
-        }
-        else
-        {
-            tags[element.nodeName]++;
-        }
-    });
+    let scraper=new HTMLPeeler(input);
+    scraper.depth=depthslider.value;
+    let tags = scraper.tagList;
     Object.entries(tags).forEach((tag)=>{
         let li = document.createElement("li");
         let t="<"+tag[0]+"> x"+tag[1];
