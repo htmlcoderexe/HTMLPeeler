@@ -85,15 +85,18 @@ gobutton.addEventListener("click",(e)=>{
     console.error("DONE SCRAPING WITH CLASS");
     
     output.innerHTML="";
-    scraper.outputHTMLDoc(output,skipfirst.value,skiplast.value);
+    let formatter = new HTMLFormatter(scraper.blocks);
+    formatter.outputHTMLDoc(output,skipfirst.value,skiplast.value);
+    // scraper.outputHTMLDoc(output,skipfirst.value,skiplast.value);
     toc.innerHTML="";
-    let headers = scraper.headers;
+    let headers = formatter.headers;
+    console.log(formatter.images);
     for(let i=0;i<headers.length;i++)
     {
         let li=document.createElement("li");
         let a = document.createElement("a");
         a.href="#header"+i;
-        a.innerText=headers[i];
+        a.innerText=headers[i][0];
         li.appendChild(a);
         toc.appendChild(li);
     }

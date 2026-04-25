@@ -1,211 +1,71 @@
-
-class HTMLPeeler
+class HTMLFormatter
 {
-    #container = null;
-    #doc = [];
-    #workingset = null;
+    #doc = null;
     #headers = [];
     #images = [];
-    #depth = 0;
-    
     /* ------------------ *\
      *                    *
      *     Public API     *
      *                    *
     \* ------------------ */
-    constructor(container)
+    /**
+     * Creates a new formatter given output from the peeler
+     * @param {object} doc 
+     */
+    constructor(doc)
     {
-        this.#container=container;
+        this.#doc=doc;
     }
     /**
-     * Returns a list of header anchor names.
+     * Formats the document as HTML and inserts into target element
+     * @param {HTMLElement} output Target Element
+     * @param {number} skipfirst Amount of blocks to skip from the beginning
+     * @param {number} skiplast Amount of blocks to skip from the end
+     */
+    outputHTMLDoc(output, skipfirst, skiplast)
+    {
+        let outdoc = this.#doc.slice(skipfirst,skiplast==0?undefined:-skiplast);
+        this.#headers=[];
+        this.#images=[];
+        outdoc.forEach((block, i)=>{
+            switch(block.type)
+            {
+                // h1..7
+                case "header":
+                    return this.outputHeader(block,i,output);
+                // plain text block
+                case "textblock":
+                    return this.outputParagraph(block,i,output);
+                // blockquote
+                case "quote":
+                    return this.outputBlockQuote(block,i,output);
+                // code, gets put inside a blockquote
+                case "codeblock":
+                    return this.outputCodeBlock(block,i,output);
+                // image, gets a description attached
+                case "image":
+                    return this.outputImage(block,i,output);
+                // ordered or unordered list, items as blocks
+                case "list":
+                    return this.outputList(block,i,output);
+            }
+        });
+    }
+    /**
+     * Returns a list of images, as tuples of [URL, HTML Element of the img tag]
+     */
+    get images()
+    {
+        return [...this.#images];
+    }
+    /**
+     * Returns a list of header anchor names, as tuples of [header text, HTML Element]
      */
     get headers()
     {
         return [...this.#headers];
     }
-    /**
-     * This sets the tag depths at which the peeler works - higher values flatten the tree more.
-     */
-    set depth(value)
-    {
-        console.log(value);
-        this.#depth=value;
-        this.#workingset = HTMLPeeler.flatten(this.#container.childNodes,this.#depth);
-    }
-    get depth()
-    {
-        return this.#depth;
-    }
-    /**
-     * A key-value object with counts of every top-level tag encountered (Text nodes are shown as "#text")
-     */
-    get tagList()
-    {
-        let tags = {};
-        this.#workingset.forEach(element => {
-            if(!tags[element.nodeName])
-            {
-                tags[element.nodeName]=1;
-            }
-            else
-            {
-                tags[element.nodeName]++;
-            }
-        });
-        return tags;
-    }
-    scrape()
-    {
-        if(!this.#container)
-        {
-            return null;
-        }
-        this.#doc = [];
-        // contents = e.querySelectorAll("p, h1, h2, h3, h4, h5, h6,  header, blockquote, ul, ol, dl, table");
-        // run over every child element and extract blocks
-        this.#workingset.forEach((node,i)=>{
-            console.warn("processing #"+i+"<"+node.nodeName+">");
-            console.log(node.innerHTML);
-            let comp = this.extractBlocks(node,i,0);
-            if(comp)
-            {
-                this.#doc.push(...comp);
-            }
-        });
-        console.error("Done processing elements, formatting the data...");
-        console.log(this.#doc);
-        return this.#doc;
-    }
     
-    /* ------------------ *\
-     *                    *
-     *      Utility       *
-     *     functions      *
-     *                    *
-    \* ------------------ */
-    static makeTextElement(text, styles, link, image)
-    {
-        return {text: text, styles: styles, link:link, image: image};
-    }
-        
-    static cmpfmt(a,b)
-    {
-        if(a==b)
-        {
-            return true;
-        }
-        if(a.length!=b.length)
-        {
-            return false;
-        }
-        let as=[...a].sort();
-        let bs=[...b].sort();
-        for(let i=0;i<a.length;i++)
-        {
-            if(a[i]!=b[i])
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-    static tryMergeNodes(a,b)
-    {
-        console.warn("Trying to merge ",a ,b);
-        if(!a || !b)
-        {
-            return false;
-        }
-        if(a.link!=b.link)
-        {
-            return false;
-        }
-        if(!HTMLPeeler.cmpfmt(a.styles,b.styles))
-        {
-            return false;
-        }
-        if(a.image!=b.image)
-        {
-            return false;
-        }
-        a.text += b.text;
-        return true;
-
-    }
-    /**
-     * Flattens a given node tree up to a certain depth, does not modify original object.
-     * @param {Node[] | NodeList} nodes An Array of nodes or a NodeList to be flattened.
-     * @param {number} depth Depth of nodes to flatten to.
-     * @returns Node[] An Array of nodes after flattening
-     */
-    static flatten(nodes,depth)
-    {
-        console.log(nodes, depth);
-        if(depth == 0)
-            return Array.from(nodes);
-        let result = [];
-        nodes.forEach((node)=>{
-            result.push(...HTMLPeeler.flatten(node.childNodes,depth-1));
-            console.log(result);
-            });
-        return result;
-    }
-
-    static simplify(block)
-    {
-        console.log("simplfying " + block);
-        let content = null;
-        let newcontent = [];
-        
-        if(block.elements && block.elements.length>0)
-        {
-            /*
-            if(typeof block.content == "string")
-            {
-                // #TODO: normalise to a text node
-                return;
-            }
-            //*/
-            content = block.elements;
-        }
-        else if(block.description && block.description.length>0)
-        {
-            return;
-            content = block.description;
-        }
-        else if(block.items)
-        {
-            block.items.forEach((li)=>{
-                simplify(li);
-            });
-            return;
-        }
-        if(block.definition || block.term)
-        {
-            simplify(block.definition);
-            simplify(block.term);
-        }
-        if(!content || content.length<=1)
-        {
-            return;
-        }
-        let current = null;
-        while(content.length>0)
-        {
-            let next = content.shift();
-            if(HTMLPeeler.tryMergeNodes(current,next))
-            {
-
-            }
-            else
-            {
-                newcontent.push(next);
-                current = next;
-            }
-        }
-        block.elements=newcontent;
-    }
     /* ------------------ *\
      *                    *
      *     HTML output    *
@@ -233,6 +93,7 @@ class HTMLPeeler
             currentNode.className="inlineImg";
             let img = document.createElement("img");
             img.src=textElement.image;
+            this.#images.push([textElement.image,img]);
             topNode.appendChild(img);
             topNode.appendChild(document.createElement("br"));
         }
@@ -306,108 +167,328 @@ class HTMLPeeler
             currentImg=img;
         });
     }
-    outputHTMLDoc(output, skipfirst, skiplast)
+    outputHeader(block,i,outputElement)
     {
-        
-        let outdoc = this.#doc.slice(skipfirst,skiplast==0?undefined:-skiplast);
-        this.#headers=[];
-        outdoc.forEach((block, i)=>{
-            switch(block.type)
+        let e =document.createElement("h"+block.level);
+        this.outputHTMLText(block,e);
+        // e.innerText=block.content;
+        e.dataset.num=i;
+        e.id="header"+this.#headers.length;
+        this.#headers.push([e.textContent,e]);
+        outputElement.appendChild(e);
+    }
+    outputParagraph(block, i, outputElement)
+    {
+        let e = document.createElement("p");
+        this.outputHTMLText(block,e);
+        e.dataset.num=i;
+        outputElement.appendChild(e);
+    }
+    outputBlockQuote(block, i, outputElement)
+    {
+        let e = document.createElement("blockquote");
+        this.outputHTMLText(block,e);
+        e.dataset.num=i;
+        outputElement.appendChild(e);
+    }
+    outputCodeBlock(block, i, outputElement)
+    {
+        let pre = document.createElement("pre");
+        let e = document.createElement("code");
+        this.outputHTMLText(block,e);
+        e.dataset.num=i;
+        let bq = document.createElement("blockquote");
+        bq.dataset.num=i;
+        bq.appendChild(pre);
+        pre.appendChild(e);
+        outputElement.appendChild(bq);
+    }
+    outputImage(block, i, outputElement)
+    {                    
+        let img = document.createElement("img");
+        img.src = block.src;
+        let e = document.createElement("p");
+        e.classList.add("description");
+        e.dataset.num=i;
+        this.#images.push([block.src,img]);
+        e.appendChild(img);
+        // if it has a description, write it out
+        if(block.description && block.description.length>1)
+        {
+            e.appendChild(document.createElement("br"));
+            e.appendChild(document.createTextNode(block.description));
+        }
+        outputElement.appendChild(e);
+    }
+    outputList(block, i, outputElement)
+    {
+        switch(block.listType)
+        {
+            case "definition":
+            {      
+                this.outputDefinitionList(block, i, outputElement);
+                break;
+            }
+            case "ordered":
+            {      
+                this.outputOrderedList(block, i, outputElement);
+                break;
+            }
+            case "unordered":
+            {      
+                this.outputUnorderedList(block, i, outputElement);
+                break;
+            }     
+        }
+    }
+    outputOrderedList(block, i, outputElement)
+    {
+        let e = document.createElement("ol");
+        e.dataset.num=i;
+        block.items.forEach((li)=>{
+            let eli = document.createElement("li");
+            this.outputHTMLText(li,eli);
+            e.appendChild(eli);
+        });
+        outputElement.appendChild(e);
+    }
+
+    outputUnorderedList(block, i, outputElement)
+    {
+        let e = document.createElement("ul");
+        e.dataset.num=i;
+        block.items.forEach((li)=>{
+            let eli = document.createElement("li");
+            this.outputHTMLText(li,eli);
+            e.appendChild(eli);
+        });
+        outputElement.appendChild(e);
+    }
+    outputDefinitionList(block, i, outputElement)
+    {
+        let e = document.createElement("dl");
+        e.dataset.num=i;
+        block.items.forEach((li)=>{
+            let dt = document.createElement("dt");
+            this.outputHTMLText(li.term,dt);
+            e.appendChild(dt);
+            let dd = document.createElement("dd");
+            this.outputHTMLText(li.definition,dd);
+            e.appendChild(dd);
+        });
+        outputElement.appendChild(e);
+    }
+}
+
+
+class HTMLPeeler
+{
+    #container = null;
+    #doc = [];
+    #workingset = null;
+    #headers = [];
+    #images = [];
+    #depth = 0;
+    
+    /* ------------------ *\
+     *                    *
+     *     Public API     *
+     *                    *
+    \* ------------------ */
+    constructor(container)
+    {
+        this.#container=container;
+    }
+    /**
+     * This sets the tag depths at which the peeler works - higher values flatten the tree more.
+     */
+    set depth(value)
+    {
+        console.log(value);
+        this.#depth=value;
+        this.#workingset = HTMLPeeler.flatten(this.#container.childNodes,this.#depth);
+    }
+    get depth()
+    {
+        return this.#depth;
+    }
+    /**
+     * A key-value object with counts of every top-level tag encountered (Text nodes are shown as "#text")
+     */
+    get tagList()
+    {
+        let tags = {};
+        this.#workingset.forEach(element => {
+            if(!tags[element.nodeName])
             {
-                // h1..7
-                case "header":
-                {
-                    let e =document.createElement("h"+block.level);
-                    this.outputHTMLText(block,e);
-                    // e.innerText=block.content;
-                    e.dataset.num=i;
-                    e.id="header"+this.#headers.length;
-                    this.#headers.push(e.textContent);
-                    output.appendChild(e);
-                    break;
-                }
-                // plain text block
-                case "textblock":
-                {
-                    let e = document.createElement("p");
-                    this.outputHTMLText(block,e);
-                    e.dataset.num=i;
-                    output.appendChild(e);
-                    break;
-                }
-                // blockquote
-                case "quote":
-                {
-                    let e = document.createElement("blockquote");
-                    this.outputHTMLText(block,e);
-                    e.dataset.num=i;
-                    output.appendChild(e);
-                    break;
-                }
-                // code, gets put inside a blockquote
-                case "codeblock":
-                {
-                    let pre = document.createElement("pre");
-                    let e = document.createElement("code");
-                    this.outputHTMLText(block,e);
-                    e.dataset.num=i;
-                    let bq = document.createElement("blockquote");
-                    bq.dataset.num=i;
-                    bq.appendChild(pre);
-                    pre.appendChild(e);
-                    output.appendChild(bq);
-                    break;
-                }
-                // image, gets a description attached
-                case "image":
-                {
-                    let img = document.createElement("img");
-                    img.src = block.src;
-                    let e = document.createElement("p");
-                    e.classList.add("description");
-                    e.dataset.num=i;
-                    e.appendChild(img);
-                    // if it has a description, write it out
-                    if(block.description && block.description.length>1)
-                    {
-                        e.appendChild(document.createElement("br"));
-                        e.appendChild(document.createTextNode(block.description));
-                    }
-                    output.appendChild(e);
-                    break;
-                }
-                // ordered or unordered list, items as blocks
-                case "list":
-                {
-                    if(block.listType=="definition")
-                    {      
-                        let e = document.createElement("dl");
-                        e.dataset.num=i;
-                        block.items.forEach((li)=>{
-                            let dt = document.createElement("dt");
-                            this.outputHTMLText(li.term,dt);
-                            e.appendChild(dt);
-                            let dd = document.createElement("dd");
-                            this.outputHTMLText(li.definition,dd);
-                            e.appendChild(dd);
-                        });
-                        output.appendChild(e);
-                        break;
-                    }
-                    let e = document.createElement(block.listType == "ordered"?"ol":"ul");
-                    e.dataset.num=i;
-                    block.items.forEach((li)=>{
-                        let eli = document.createElement("li");
-                        this.outputHTMLText(li,eli);
-                        e.appendChild(eli);
-                    });
-                    
-                    output.appendChild(e);
-                    break;
-                }
+                tags[element.nodeName]=1;
+            }
+            else
+            {
+                tags[element.nodeName]++;
             }
         });
+        return tags;
     }
+    /**
+     * Retrieves an array containing all extracted blocks.
+     */
+    get blocks()
+    {
+        return [...this.#doc];
+    }
+    scrape()
+    {
+        if(!this.#container)
+        {
+            return null;
+        }
+        this.#doc = [];
+        // contents = e.querySelectorAll("p, h1, h2, h3, h4, h5, h6,  header, blockquote, ul, ol, dl, table");
+        // run over every child element and extract blocks
+        this.#workingset.forEach((node,i)=>{
+            console.warn("processing #"+i+"<"+node.nodeName+">");
+            console.log(node.innerHTML);
+            let comp = this.extractBlocks(node,i,0);
+            if(comp)
+            {
+                this.#doc.push(...comp);
+            }
+        });
+        console.error("Done processing elements, formatting the data...");
+        console.log(this.#doc);
+        return this.#doc;
+    }
+    
+    /* ------------------ *\
+     *                    *
+     *      Utility       *
+     *     functions      *
+     *                    *
+    \* ------------------ */
+    static makeTextElement(text, styles, link, image)
+    {
+        return {text: text, styles: styles, link:link, image: image};
+    }
+        
+    static cmpfmt(a,b)
+    {
+        if(a==b)
+        {
+            return true;
+        }
+        if(a.length!=b.length)
+        {
+            return false;
+        }
+        let as=[...a].sort();
+        let bs=[...b].sort();
+        for(let i=0;i<a.length;i++)
+        {
+            if(a[i]!=b[i])
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+    static tryMergeNodes(a,b)
+    {
+        //console.warn("Trying to merge ",a ,b);
+        if(!a || !b)
+        {
+            return false;
+        }
+        if(a.link!=b.link)
+        {
+            return false;
+        }
+        if(!HTMLPeeler.cmpfmt(a.styles,b.styles))
+        {
+            return false;
+        }
+        if(a.image!=b.image)
+        {
+            return false;
+        }
+        a.text += b.text;
+        return true;
+
+    }
+    /**
+     * Flattens a given node tree up to a certain depth, does not modify original object.
+     * @param {Node[] | NodeList} nodes An Array of nodes or a NodeList to be flattened.
+     * @param {number} depth Depth of nodes to flatten to.
+     * @returns Node[] An Array of nodes after flattening
+     */
+    static flatten(nodes,depth)
+    {
+        console.log(nodes, depth);
+        if(depth == 0)
+            return Array.from(nodes);
+        let result = [];
+        nodes.forEach((node)=>{
+            result.push(...HTMLPeeler.flatten(node.childNodes,depth-1));
+            console.log(result);
+            });
+        return result;
+    }
+
+    static simplify(block)
+    {
+        console.log("simplfying " + block);
+        let content = null;
+        let newcontent = [];
+        
+        if(block.elements && block.elements.length>0)
+        {
+            /*
+            if(typeof block.content == "string")
+            {
+                // #TODO: normalise to a text node
+                return;
+            }
+            //*/
+            content = block.elements;
+        }
+        else if(block.description && block.description.length>0)
+        {
+            return;
+            content = block.description;
+        }
+        else if(block.items)
+        {
+            block.items.forEach((li)=>{
+                this.simplify(li);
+            });
+            return;
+        }
+        if(block.definition || block.term)
+        {
+            simplify(block.definition);
+            simplify(block.term);
+        }
+        if(!content || content.length<=1)
+        {
+            return;
+        }
+        let current = null;
+        while(content.length>0)
+        {
+            let next = content.shift();
+            if(HTMLPeeler.tryMergeNodes(current,next))
+            {
+
+            }
+            else
+            {
+                newcontent.push(next);
+                current = next;
+            }
+        }
+        block.elements=newcontent;
+    }
+    
     /* ------------------ *\
      *                    *
      *     Extraction     *
@@ -614,7 +695,7 @@ class HTMLPeeler
             this.extractTextContent(comp.elements,e,[],"");
             // the check for textblock exists because
             // it may turn into an image block
-            if(comp.content.length<1 && comp.type=="textblock")
+            if(comp.elements.length<1 && comp.type=="textblock")
             {
                 console.error("Empty element "+levelref);
                 return null;
@@ -638,6 +719,11 @@ class HTMLPeeler
         // some other tag, check if it is not empty
         if(e.hasChildNodes() && comp.type=="unknown")
         {
+            if(e.children.length==1)
+            {
+                console.log("single node contains something");
+                return this.extractBlocks(e.children[0],i,0);
+            }
             console.error("AAAAAAAAAAAAAAAFUCK");
             this.extractTextContent(comp.elements,e,[],"");
             console.warn(comp.elements);
