@@ -707,6 +707,19 @@ class HTMLPeeler
             comp.type="quote";
             this.extractTextContent(comp.elements,e,[],"");
         }
+        // same for pre->code
+        if(TN=="PRE" && e.children && e.children[0] && e.children[0].nodeName=="CODE")
+        {
+            comp.type="codeblock";
+            let cc = e.children[0].childNodes;
+            // okay the bug I was trying to fix apparently had to do with PRE being able to 
+            // have a "tab-size" style while default seems more like 8
+            // so the double wrapping in code/pre had little to do with this
+            // but still nice to fix
+            cc.forEach((node)=>{
+                this.extractTextContent(comp.elements,node,[],"");
+            });
+        }
         // h1..7
         if(TN[0]=="H" && TN.length==2)
         {
