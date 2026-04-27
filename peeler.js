@@ -30,7 +30,7 @@ class HTMLFormatter
         outdoc.forEach((block, i)=>{
             if(HTMLPeeler.blockIsEmpty(block))
             {
-                console.log("Skipping empty block "+i);
+                //console.log("Skipping empty block "+i);
                 return;
             }
             switch(block.type)
@@ -186,7 +186,7 @@ class HTMLFormatter
             }
             else
             {
-                console.log(lastElement,e,elements,target);
+                //console.log(lastElement,e,elements,target);
                 lastElement.append(this.outputHTMLElement(e,false));
             }
             currentImg=img;
@@ -333,7 +333,7 @@ class HTMLPeeler
     #headers = [];
     #images = [];
     #depth = 0;
-    
+    #currentblock = null;
     /* ------------------ *\
      *                    *
      *     Public API     *
@@ -348,7 +348,7 @@ class HTMLPeeler
      */
     set depth(value)
     {
-        console.log(value);
+        //console.log(value);
         this.#depth=value;
         this.#workingset = HTMLPeeler.flatten(this.#container.childNodes,this.#depth);
     }
@@ -391,16 +391,20 @@ class HTMLPeeler
         // contents = e.querySelectorAll("p, h1, h2, h3, h4, h5, h6,  header, blockquote, ul, ol, dl, table");
         // run over every child element and extract blocks
         this.#workingset.forEach((node,i)=>{
-            console.warn("processing #"+i+"<"+node.nodeName+">");
-            console.log(node.innerHTML);
+            //console.warn("processing #"+i+"<"+node.nodeName+">");
+            //console.log(node.innerHTML);
+            //this.extractBlocks(node,i,0);
+            //*
             let comp = this.extractBlocks(node,i,0);
             if(comp)
             {
+                comp.forEach((block)=>{if(block.type=="unknown"){block.type="textblock"}});
                 this.#doc.push(...comp);
             }
+            //*/
         });
-        console.error("Done processing elements, formatting the data...");
-        console.log(this.#doc);
+        //console.error("Done processing elements, formatting the data...");
+        //console.log(this.#doc);
         return this.#doc;
     }
     
@@ -438,7 +442,7 @@ class HTMLPeeler
     }
     static tryMergeNodes(a,b)
     {
-        //console.warn("Trying to merge ",a ,b);
+        ////console.warn("Trying to merge ",a ,b);
         if(!a || !b)
         {
             return false;
@@ -467,20 +471,20 @@ class HTMLPeeler
      */
     static flatten(nodes,depth)
     {
-        console.log(nodes, depth);
+        //console.log(nodes, depth);
         if(depth == 0)
             return Array.from(nodes);
         let result = [];
         nodes.forEach((node)=>{
             result.push(...HTMLPeeler.flatten(node.childNodes,depth-1));
-            console.log(result);
+            //console.log(result);
             });
         return result;
     }
 
     static simplify(block)
     {
-        console.log("simplfying ", block);
+        //console.log("simplfying ", block);
         let content = null;
         let newcontent = [];
         
@@ -504,7 +508,7 @@ class HTMLPeeler
                         all_same = false;
                     }
                 }
-                console.log(all_same,imagefound,block);
+                //console.log(all_same,imagefound,block);
             });
             if(all_same && imagefound!="")
             {
@@ -524,7 +528,7 @@ class HTMLPeeler
         else if(block.items)
         {
             block.items.forEach((li)=>{
-                this.simplify(li);
+                HTMLPeeler.simplify(li);
             });
             return;
         }
@@ -534,8 +538,8 @@ class HTMLPeeler
         }
         if(block.definition || block.term)
         {
-            simplify(block.definition);
-            simplify(block.term);
+            HTMLPeeler.simplify(block.definition);
+            HTMLPeeler.simplify(block.term);
         }
         if(!content || content.length<=1)
         {
@@ -544,6 +548,10 @@ class HTMLPeeler
         let current = null;
         newcontent=HTMLPeeler.runMerge(content);
         block.elements=newcontent;
+        if(block.type=="unknown")
+        {
+            block.type="textblock";
+        }
     }
 
     static runMerge(input)
@@ -680,6 +688,22 @@ class HTMLPeeler
             "SMALL":"small"
         };
         let TN = element.nodeName;
+        
+        // h1..7
+        if(TN[0]=="H" && TN.length==2 && this.#currentblock)
+        {
+            HTMLPeeler.simplify(this.#currentblock);
+            this.#doc.push(this.#currentblock);
+            let newblock = {type: this.#currentblock.type,elements:[]};
+            let comp = {elements:[]}
+            comp.type="header";
+            comp.level=Number.parseInt(TN[1]);
+            element.childNodes.forEach((e)=>{
+            this.extractTextContent(comp.elements,e,[],"");});
+            this.#doc.push(comp);
+            this.#currentblock = newblock;
+            return;
+        }
         if(TN=="IMG")
         {
             container.push(HTMLPeeler.makeTextElement("",[],"",element.src));
@@ -709,7 +733,7 @@ class HTMLPeeler
         }
         else
         {
-            console.log("TAG IN P:"+TN);
+            //console.log("TAG IN P:"+TN);
         }
         if(!element.hasChildNodes)
         {
@@ -726,34 +750,35 @@ class HTMLPeeler
         element.childNodes.forEach((node)=>{
             this.extractTextContent(container,node,currentStyles,currentLink,currentImage);
         });
-        console.error(TN,element,container);
+        //console.error(TN,element,container);
     }
     extractBlocks(e,i, level=0)
     {
         if(level>0)
         {
-            // console.log("level "+level);
+            // //console.log("level "+level);
         }
         let levelref = "#"+i+"/"+level;
         let TN = e.nodeName;
         let nt = e.nodeType;
-        console.warn(levelref+"<"+TN+">");
+        //console.warn(levelref+"<"+TN+">");
         let comp = {"type": "unknown", "content":[],elements:[]};
         // do a text block
         if(nt != Node.ELEMENT_NODE)
         {
-            console.info("This was a text node.");
-            console.log(e);
-            console.info("---------------------");
+            //console.info("This was a text node.");
+            //console.log(e);
+            //console.info("---------------------");
             if(level > -1 && e.textContent.trim()!="")
             {
                 comp.type="textblock";
                 this.extractTextContent(comp.elements,e,[],"");
-                console.info("text node @"+levelref+" added.");
+                this.#doc.push(comp);
+                //console.info("text node @"+levelref+" added.");
             }
             else
             {
-                console.info("text node @"+levelref+" skipped");
+                //console.info("text node @"+levelref+" skipped");
                 return null;
             }
         }
@@ -761,18 +786,25 @@ class HTMLPeeler
         {
             if(e.rows.length==1 && e.rows[0].childNodes.length==1)
             {
-                console.log("singular table");
+                //console.log("singular table");
                 let td=e.rows[0].childNodes[0];
                
                 let results = [];
+                this.#currentblock=comp;
                 td.childNodes.forEach((n)=>{
-                    this.extractTextContent(comp.elements,n,[],"");
+                    console.log(n,this.#currentblock);
+                    this.extractTextContent(this.#currentblock.elements,n,[],"");
+                    
                     //let el = this.extractBlocks(n,i,level+1);
                     /*if(el && el.length>0)
                     {
                         results.push(...el);
                     }//*/
                 });
+                //this.#doc.push();
+                console.log(this.#currentblock);
+                comp = this.#currentblock;
+                this.#currentblock = null;
                 HTMLPeeler.simplify(comp);
                 return [comp];
                 //return getEl(,i);
@@ -780,10 +812,10 @@ class HTMLPeeler
             }
             else
             {
-                console.log("regular table");
+                //console.log("regular table");
                 comp.type="table";
                 comp.rows=[];
-                console.log(e.rows);
+                //console.log(e.rows);
                 Array.from(e.rows).forEach((tr)=>{
                     let row = [];
                     tr.childNodes.forEach((td)=>{
@@ -852,7 +884,7 @@ class HTMLPeeler
             // it may turn into an image block
             if(comp.elements.length<1 && comp.type=="textblock")
             {
-                console.error("Empty element "+levelref);
+                //console.error("Empty element "+levelref);
                 return null;
             }
         }
@@ -889,12 +921,12 @@ class HTMLPeeler
         {
             if(e.children.length==1)
             {
-                console.log("single node contains something");
+                //console.log("single node contains something");
                 return this.extractBlocks(e.children[0],i,0);
             }
-            console.error("AAAAAAAAAAAAAAAFUCK");
+            //console.error("AAAAAAAAAAAAAAAFUCK");
             this.extractTextContent(comp.elements,e,[],"");
-            console.warn(comp.elements);
+            //console.warn(comp.elements);
             if(comp.elements.length>0)
             {
                 comp.type="textblock";
@@ -905,25 +937,25 @@ class HTMLPeeler
             let contents = e.childNodes;
             let newlvl = level+1;
             // try to extract blocks out of this level
-            console.warn("Compound element @#"+i+", recursing "+level+">"+newlvl);
-            console.log(e);
-            console.info("-----------------------------------");
+            //console.warn("Compound element @#"+i+", recursing "+level+">"+newlvl);
+            //console.log(e);
+            //console.info("-----------------------------------");
             // any of these might contain blocks
             if(TN=="TD" || TN=="DIV" || TN=="SECTION" || TN=="HEADER" || TN=="FIGURE" || TN=="ARTICLE")
             {
                 contents.forEach((node)=>{
-                    console.error("fuckfuckfuckfuckfuck");
+                    //console.error("fuckfuckfuckfuckfuck");
                     let newcomp = this.extractBlocks(node,i, newlvl);
                     // if no blocks were found, return empty
                     if(newcomp && newcomp.length!=0)
                     {
-                        console.log(newcomp);
-                        console.info("Got the above from compound element "+levelref);
+                        //console.log(newcomp);
+                        //console.info("Got the above from compound element "+levelref);
                         results.push(...newcomp);
                     }
                     else
                     {
-                        console.error("Got nothing from compound element "+levelref);
+                        //console.error("Got nothing from compound element "+levelref);
                         return null;
                     }
                 });
@@ -932,7 +964,7 @@ class HTMLPeeler
             {
                 // try to extract something out of the tag anyway
                 // possibly an image or some blocks
-                console.error("unknown, not div");
+                //console.error("unknown, not div");
                 
                 // fillEl(e,comp);
                 results = [comp];
@@ -944,19 +976,19 @@ class HTMLPeeler
             
         }
         results.forEach((block)=>{
-            //console.error("AAAAAAAAAAAAAAAAAAAA");
-            //console.error(block);
+            ////console.error("AAAAAAAAAAAAAAAAAAAA");
+            ////console.error(block);
             HTMLPeeler.simplify(block);
         });
         // only here if all extractions failed
         if(results.length==1 && results[0].type=="unknown")
         {
-            console.error("Unknown @#:"+i+"/"+level);
-            console.log(e);
-            console.error("--------");
+            //console.error("Unknown @#:"+i+"/"+level);
+            //console.log(e);
+            //console.error("--------");
         }
-        console.log(results);
-        console.info("Got the above from element "+levelref);
+        //console.log(results);
+        //console.info("Got the above from element "+levelref);
         return results;
     }
 
@@ -974,7 +1006,7 @@ function getVideoTypeInfo(url, target)
     }
     catch(err)
     {
-        console.err("<"+url+"> is a bad URL!!!");
+        //console.err("<"+url+"> is a bad URL!!!");
     }
 }
 
@@ -983,14 +1015,14 @@ function getVideoTypeInfo(url, target)
 function fillEl(e, container)
 {
     return;
-    console.warn("Filling container from element:");
-    console.info(container,e);
+    //console.warn("Filling container from element:");
+    //console.info(container,e);
     let TN = e.nodeName;
     let nt = e.nodeType;
     // convert block to image if given element is an image
     if(TN =="IMG")
     {
-        console.log("Converted to image.");
+        //console.log("Converted to image.");
         container.type="image";
         container.src =e.src;
         if(e.alt!="")
@@ -1006,7 +1038,7 @@ function fillEl(e, container)
     // conver to embed if hitting an iframe
     if(TN == "IFRAME")
     {
-        console.log("converted to embed");
+        //console.log("converted to embed");
         comp.type="embed";
         comp.src = e.src;
         getVideoTypeInfo(e.src,comp);
@@ -1018,7 +1050,7 @@ function fillEl(e, container)
         case "image":
         {
             // probably should do something else as this has no effect
-            console.log("processing additional stuff in image");
+            //console.log("processing additional stuff in image");
             doP(e,container);
             return;
         }
@@ -1027,14 +1059,14 @@ function fillEl(e, container)
         case "quote":
         case "codeblock":
         {
-            console.log("doing regular text block");
+            //console.log("doing regular text block");
             doP(e,container);
             return;
         }
         // extract list elements
         case "list":
         {
-            console.log("list time");
+            //console.log("list time");
             doList(e,container);
             return;
         }
@@ -1043,7 +1075,7 @@ function fillEl(e, container)
     // and the container is not yet typed
     if(TN == "CODE")
     {
-        console.log("making a codeblock");
+        //console.log("making a codeblock");
         container.type="codeblock";
         container.content = [];
     }
@@ -1051,7 +1083,7 @@ function fillEl(e, container)
     
     if(e.hasChildNodes())
     {
-        console.info("Element still needs filling");
+        //console.info("Element still needs filling");
         let contents = e.childNodes;
             contents.forEach((node)=>{
             fillEl(node,container);
@@ -1060,9 +1092,9 @@ function fillEl(e, container)
         // last ditch to extract some text
         if(container.type=="unknown")
         {
-            console.warn("falling back to textblock!");
-            console.log(e.innerHTML);
-            console.log("----------------------------");
+            //console.warn("falling back to textblock!");
+            //console.log(e.innerHTML);
+            //console.log("----------------------------");
             container.type="textblock";
             e.childNodes.forEach((node)=>{
                 fillEl(e,container);

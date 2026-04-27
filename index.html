@@ -82,7 +82,7 @@ gobutton.addEventListener("click",(e)=>{
     let scraper = new HTMLPeeler(input);
     scraper.depth=depthslider.value;
     scraper.scrape();
-    console.error("DONE SCRAPING WITH CLASS");
+    //console.error("DONE SCRAPING WITH CLASS");
     
     output.innerHTML="";
     let formatter = new HTMLFormatter(scraper.blocks);
@@ -90,7 +90,7 @@ gobutton.addEventListener("click",(e)=>{
     // scraper.outputHTMLDoc(output,skipfirst.value,skiplast.value);
     toc.innerHTML="";
     let headers = formatter.headers;
-    console.log(formatter.images);
+    //console.log(formatter.images);
     console.log(scraper.blocks);
     for(let i=0;i<headers.length;i++)
     {
