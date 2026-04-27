@@ -704,6 +704,18 @@ class HTMLPeeler
             this.#currentblock = newblock;
             return;
         }
+        if(TN=="IFRAME" && this.#currentblock)
+        {
+            HTMLPeeler.simplify(this.#currentblock);
+            this.#doc.push(this.#currentblock);
+            let newblock = {type: this.#currentblock.type,elements:[]};
+            let comp = {elements:[]}
+            comp.type="embed";
+            comp.src=element.src;
+            this.#doc.push(comp);
+            this.#currentblock = newblock;
+            return;
+        }
         if(TN=="IMG")
         {
             container.push(HTMLPeeler.makeTextElement("",[],"",element.src));
