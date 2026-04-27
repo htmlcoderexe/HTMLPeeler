@@ -48,6 +48,9 @@ class HTMLFormatter
                 // ordered or unordered list, items as blocks
                 case "list":
                     return this.outputList(block,i,output);
+                // tables
+                case "table":
+                    return this.outputTable(block,i,output);
             }
         });
     }
@@ -140,7 +143,14 @@ class HTMLFormatter
         let elements = block.elements;
         if(!elements)
         {
-            return;
+            if(block.forEach)
+            {
+                elements = block;
+            }
+            else
+            {
+                return;
+            }
             // elements = block;
         }
         if(elements.length<1)
@@ -291,6 +301,21 @@ class HTMLFormatter
             e.appendChild(dd);
         });
         outputElement.appendChild(e);
+    }
+    outputTable(block, i, outputElement)
+    {
+        let t = document.createElement("table");
+        t.dataset.num = i;
+        block.rows.forEach((row,n)=>{
+            let tr = document.createElement("tr");
+            row.forEach((cell)=>{
+                let td = document.createElement(n==0?"th":"td");
+                this.outputHTMLText(cell,td);
+                tr.appendChild(td);
+            });
+            t.appendChild(tr);
+        });
+        outputElement.appendChild(t);
     }
 }
 
@@ -498,6 +523,10 @@ class HTMLPeeler
             });
             return;
         }
+        else if(block.forEach)
+        {
+            return HTMLPeeler.runMerge(block);
+        }
         if(block.definition || block.term)
         {
             simplify(block.definition);
@@ -508,20 +537,29 @@ class HTMLPeeler
             return;
         }
         let current = null;
-        while(content.length>0)
+        newcontent=HTMLPeeler.runMerge(content);
+        block.elements=newcontent;
+    }
+
+    static runMerge(input)
+    {
+        input=[...input];
+        let output=[];
+        let current = null;
+        while(input.length>0)
         {
-            let next = content.shift();
+            let next = input.shift();
             if(HTMLPeeler.tryMergeNodes(current,next))
             {
 
             }
             else
             {
-                newcontent.push(next);
+                output.push(next);
                 current = next;
             }
         }
-        block.elements=newcontent;
+        return output;
     }
     
     /* ------------------ *\
@@ -689,6 +727,24 @@ class HTMLPeeler
                 return [comp];
                 //return getEl(,i);
 
+            }
+            else
+            {
+                console.log("regular table");
+                comp.type="table";
+                comp.rows=[];
+                console.log(e.rows);
+                Array.from(e.rows).forEach((tr)=>{
+                    let row = [];
+                    tr.childNodes.forEach((td)=>{
+                        let cell = [];
+                        this.extractTextContent(cell,td,[],"");
+                        cell=HTMLPeeler.runMerge(cell);
+                        row.push(cell);
+                    });
+                    comp.rows.push(row);
+                });
+                return [comp];
             }
         }
         // image
