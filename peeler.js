@@ -542,15 +542,19 @@ class HTMLPeeler
         let currentStyles = [...styles];
         let currentImage = image;
         let fmap = {
-            "DEL": "s",
+            "DEL": "del",
             "U":"u",
-            "S":"s",
-            "B":"b",
-            "STRONG":"b",
-            "EM":"i",
-            "I":"i",
+            "S":"del",
+            "B":"strong",
+            "STRONG":"strong",
+            "EM":"em",
+            "I":"em",
             "PRE":"pre",
-            "CODE":"code"
+            "CODE":"code",
+            "SUP":"sup",
+            "SUB":"sub",
+            "KBD":"kbd",
+            "SMALL":"small"
         };
         let TN = element.nodeName;
         if(TN=="IMG")
