@@ -28,6 +28,11 @@ class HTMLFormatter
         this.#headers=[];
         this.#images=[];
         outdoc.forEach((block, i)=>{
+            if(HTMLPeeler.blockIsEmpty(block))
+            {
+                console.log("Skipping empty block "+i);
+                return;
+            }
             switch(block.type)
             {
                 // h1..7
@@ -560,6 +565,51 @@ class HTMLPeeler
             }
         }
         return output;
+    }
+
+    static elementsPlainText(elements)
+    {
+        if(!elements)
+            return "";
+        if(elements.length<1)
+            return "";
+        let accumulator ="";
+        elements.forEach((e)=>{
+            accumulator+=e.text??"";
+        });
+        accumulator=accumulator.trim();
+        return accumulator;
+    }
+    static getImages(elements)
+    {
+        if(!elements)
+            return [];
+        if(elements.length<1)
+            return [];
+        let imglist = [];
+        elements.forEach((e)=>{
+            if(e.image&&e.image!=""&&!imglist.find((img)=>img==e.image))
+            {
+                imglist.push(e.image);
+            }
+        });
+        return imglist;
+    }
+
+    static blockIsEmpty(block)
+    {
+        switch(block.type)
+        {
+            case "image":
+                return false;
+            case "header":
+            case "textblock":
+            case "blockquote":
+            case "codeblock":
+                return HTMLPeeler.elementsPlainText(block.elements)=="" && HTMLPeeler.getImages(block.elements).length==0;
+            case "table":
+                return (!block.rows || block.rows.length<1);
+        }
     }
     
     /* ------------------ *\
