@@ -79,6 +79,10 @@ class HTMLFormatter
         let currentNode = null;
         // the node containing the entire stack
         let topNode = null;
+        if(textElement.special)
+        {
+            return document.createElement(textElement.special);
+        }
         // create a top-level <A> element if there's a link
         if(textElement.link)
         {
@@ -136,7 +140,8 @@ class HTMLFormatter
         let elements = block.elements;
         if(!elements)
         {
-            elements = block;
+            return;
+            // elements = block;
         }
         if(elements.length<1)
         {
@@ -146,6 +151,10 @@ class HTMLFormatter
         let currentImg=null;
         elements.forEach((e)=>{
             let img = e.image??null;
+            if(img=="")
+            {
+                img=null;
+            }
             if(currentImg!=img)
             {
                 if(img==null)
@@ -162,6 +171,7 @@ class HTMLFormatter
             }
             else
             {
+                console.log(lastElement,e,elements,target);
                 lastElement.append(this.outputHTMLElement(e,false));
             }
             currentImg=img;
@@ -217,6 +227,10 @@ class HTMLFormatter
         {
             e.appendChild(document.createElement("br"));
             e.appendChild(document.createTextNode(block.description));
+        }
+        if(block.elements && block.elements.length>1)
+        {
+            this.outputHTMLText(block,e);
         }
         outputElement.appendChild(e);
     }
@@ -436,19 +450,40 @@ class HTMLPeeler
 
     static simplify(block)
     {
-        console.log("simplfying " + block);
+        console.log("simplfying ", block);
         let content = null;
         let newcontent = [];
         
         if(block.elements && block.elements.length>0)
         {
-            /*
-            if(typeof block.content == "string")
+            let imagefound = "";
+            let all_same = true;
+            block.elements.forEach((e)=>{
+                if(!e.image)
+                {
+                    e.image="";
+                }
+                if(e.image!=imagefound)
+                {
+                    if(imagefound=="")
+                    {
+                        imagefound = e.image;
+                    }
+                    else
+                    {
+                        all_same = false;
+                    }
+                }
+                console.log(all_same,imagefound,block);
+            });
+            if(all_same && imagefound!="")
             {
-                // #TODO: normalise to a text node
-                return;
+                block.type="image";
+                block.src = imagefound;
+                block.elements.forEach((e)=>{
+                    e.image="";
+                });
             }
-            //*/
             content = block.elements;
         }
         else if(block.description && block.description.length>0)
@@ -571,6 +606,14 @@ class HTMLPeeler
                 currentImage=img.image;
             }
         }
+        if(TN=="BR")
+        {
+            container.push({special:"br", image:currentImage});
+        }
+        if(TN=="HR")
+        {
+            container.push({special:"hr", image:currentImage});
+        }
         if(nt == Node.TEXT_NODE)
         {
             container.push(HTMLPeeler.makeTextElement(element.data,[...styles],currentLink,currentImage));
@@ -595,7 +638,7 @@ class HTMLPeeler
         element.childNodes.forEach((node)=>{
             this.extractTextContent(container,node,currentStyles,currentLink,currentImage);
         });
-        console.log(TN,element,container);
+        console.error(TN,element,container);
     }
     extractBlocks(e,i, level=0)
     {
@@ -632,16 +675,18 @@ class HTMLPeeler
             {
                 console.log("singular table");
                 let td=e.rows[0].childNodes[0];
-                this.extractTextContent(comp.elements,td,[],"");
+               
                 let results = [];
                 td.childNodes.forEach((n)=>{
-                    let el = this.extractBlocks(n,i,level+1);
-                    if(el && el.length>0)
+                    this.extractTextContent(comp.elements,n,[],"");
+                    //let el = this.extractBlocks(n,i,level+1);
+                    /*if(el && el.length>0)
                     {
                         results.push(...el);
-                    }
+                    }//*/
                 });
-                return results;
+                HTMLPeeler.simplify(comp);
+                return [comp];
                 //return getEl(,i);
 
             }
@@ -792,6 +837,11 @@ class HTMLPeeler
         {
             
         }
+        results.forEach((block)=>{
+            //console.error("AAAAAAAAAAAAAAAAAAAA");
+            //console.error(block);
+            HTMLPeeler.simplify(block);
+        });
         // only here if all extractions failed
         if(results.length==1 && results[0].type=="unknown")
         {
@@ -799,11 +849,6 @@ class HTMLPeeler
             console.log(e);
             console.error("--------");
         }
-        results.forEach((block)=>{
-            //console.error("AAAAAAAAAAAAAAAAAAAA");
-            //console.error(block);
-            HTMLPeeler.simplify(block);
-        });
         console.log(results);
         console.info("Got the above from element "+levelref);
         return results;
