@@ -670,6 +670,7 @@ class HTMLPeeler
             {
                 let li = {term:[],definition:[]}; 
                 this.extractTextContent(li.term,node,[],"");
+                result.push(li);
             }
             if(node.tagName=="DD" && result.length>0)
             {
