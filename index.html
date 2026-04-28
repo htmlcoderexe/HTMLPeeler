@@ -91,15 +91,44 @@ gobutton.addEventListener("click",(e)=>{
     toc.innerHTML="";
     let headers = formatter.headers;
     //console.log(formatter.images);
+    let depthstack=[toc];
     console.log(scraper.blocks);
+    let curlvl = 2;
+    let lastli = null;
     for(let i=0;i<headers.length;i++)
     {
+        let h = Number.parseInt(headers[i][1].tagName[1]);
+        if(h==1)
+        {
+            continue;
+        }
+        if(h>curlvl)
+        {
+
+            let li=lastli;
+            if(!lastli)
+                li = output.ownerDocument.createElement("li");
+            let nextlvl = document.createElement("ol");
+            let currentlist = depthstack.pop();
+            li.appendChild(nextlvl);
+            currentlist.appendChild(li);
+            depthstack.push(currentlist);
+            depthstack.push(nextlvl);
+        }
+        if(h<curlvl)
+        {
+            depthstack.pop();
+        }
+        curlvl = h;
+        let curlist = depthstack.pop();
         let li=output.ownerDocument.createElement("li");
         let a = output.ownerDocument.createElement("a");
         a.href="#header"+i;
         a.innerText=headers[i][0];
         li.appendChild(a);
-        toc.appendChild(li);
+        curlist.appendChild(li);
+        lastli = li;
+        depthstack.push(curlist);
     }
 });
 depthslider.addEventListener("input",(e)=>{
