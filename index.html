@@ -56,7 +56,7 @@
     font-size: 1.0rem;
     line-height: 1.5rem;
 }
-#target, #depthinfo,#toc
+#target, #depthinfo,#toc,#targetcontainer
 {
     width: 300px;
     height:280px;
@@ -66,11 +66,10 @@
 }
 </style>
 <script src="peeler.js"></script>
-<div id="target" contenteditable></div><ul id="depthinfo"></ul><ol id="toc"></ol><br />
+<div id="targetcontainer"><iframe id="target" srcdoc="<!doctype html><head></head><body contenteditable>a</body></html>"></iframe><iframe id="target2"></iframe></div><ul id="depthinfo"></ul><ol id="toc"></ol><br />
 <button id="scrape">go</button><input type="range" min="0" max="10" id="scraperdepth" /><span>Skip first </span><input type="number" id="skipfirst" value="0" /><span> and last </span><input value="0" type="number" id="skiplast" /><span> blocks.</span>
 <div id="output"></div>
 <script>
-let input=document.getElementById("target");
 let output=document.getElementById("output");
 let depthslider = document.getElementById("scraperdepth");
 let depthinfo = document.getElementById("depthinfo");
@@ -78,8 +77,10 @@ let gobutton=document.getElementById("scrape");
 let toc = document.getElementById("toc");
 let skiplast = document.getElementById("skiplast");
 let skipfirst = document.getElementById("skipfirst");
+//*
 gobutton.addEventListener("click",(e)=>{
-    let scraper = new HTMLPeeler(input);
+inputframe.contentDocument.body.style.backgroundColor="blue";
+    let scraper = new HTMLPeeler(inputframe.contentDocument.body);
     scraper.depth=depthslider.value;
     scraper.scrape();
     //console.error("DONE SCRAPING WITH CLASS");
@@ -94,8 +95,8 @@ gobutton.addEventListener("click",(e)=>{
     console.log(scraper.blocks);
     for(let i=0;i<headers.length;i++)
     {
-        let li=document.createElement("li");
-        let a = document.createElement("a");
+        let li=output.ownerDocument.createElement("li");
+        let a = output.ownerDocument.createElement("a");
         a.href="#header"+i;
         a.innerText=headers[i][0];
         li.appendChild(a);
@@ -104,18 +105,32 @@ gobutton.addEventListener("click",(e)=>{
 });
 depthslider.addEventListener("input",(e)=>{
     depthinfo.innerHTML="";
-    let scraper=new HTMLPeeler(input);
+    let scraper=new HTMLPeeler(inputframe.contentDocument.body);
     scraper.depth=depthslider.value;
     let tags = scraper.tagList;
     Object.entries(tags).forEach((tag)=>{
-        let li = document.createElement("li");
+        let li = output.ownerDocument.createElement("li");
         let t="<"+tag[0]+"> x"+tag[1];
-        li.appendChild(document.createTextNode(t));
+        li.appendChild(output.ownerDocument.createTextNode(t));
         depthinfo.appendChild(li);
     });
 });
-input.addEventListener("blur",(e)=>{
-depthslider.dispatchEvent(new Event("input"));})
+//*/
+let inputframe=document.getElementById("target");
+inputframe.addEventListener("load",(e)=> 
+{
+
+    inputframe.contentDocument.body.addEventListener("paste",(e)=>{
+        let d = e.clipboardData.getData('text/html');
+        console.log(d);
+        // this is probably not a good idea - check for proper way
+        inputframe.contentDocument.body.innerHTML = d;
+        e.preventDefault();
+    });
+//*/
+});
+//inputframe.addEventListener("blur",(e)=>{
+//depthslider.dispatchEvent(new Event("input"));});
 </script>
 </body>
 </html>

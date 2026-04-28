@@ -82,38 +82,38 @@ class HTMLFormatter
     outputHTMLElement(textElement, imgContainer)
     {
         // contains the text
-        let textNode = document.createTextNode(textElement.text);
+        let textNode = output.ownerDocument.createTextNode(textElement.text);
         // currently innermost node
         let currentNode = null;
         // the node containing the entire stack
         let topNode = null;
         if(textElement.special)
         {
-            return document.createElement(textElement.special);
+            return output.ownerDocument.createElement(textElement.special);
         }
         // create a top-level <A> element if there's a link
         if(textElement.link)
         {
-            currentNode = document.createElement("a");
+            currentNode = output.ownerDocument.createElement("a");
             topNode = currentNode;
             currentNode.href = textElement.link;
         }
         if(textElement.image && imgContainer)
         {
-            currentNode = document.createElement("div");
+            currentNode = output.ownerDocument.createElement("div");
             topNode = currentNode;
             currentNode.className="inlineImg";
-            let img = document.createElement("img");
+            let img = output.ownerDocument.createElement("img");
             img.src=textElement.image;
             this.#images.push([textElement.image,img]);
             topNode.appendChild(img);
-            topNode.appendChild(document.createElement("br"));
+            topNode.appendChild(output.ownerDocument.createElement("br"));
         }
         // create and nest any formatting tags like <EM> and <CODE>
         if(textElement.styles && textElement.styles.length>0)
         {
             textElement.styles.forEach((style)=>{
-                let newNode = document.createElement(style);
+                let newNode = output.ownerDocument.createElement(style);
                 // if no top-level node exists yet, set it and the innermost
                 if(!topNode)
                 {
@@ -194,7 +194,7 @@ class HTMLFormatter
     }
     outputHeader(block,i,outputElement)
     {
-        let e =document.createElement("h"+block.level);
+        let e =output.ownerDocument.createElement("h"+block.level);
         this.outputHTMLText(block,e);
         // e.innerText=block.content;
         e.dataset.num=i;
@@ -204,25 +204,25 @@ class HTMLFormatter
     }
     outputParagraph(block, i, outputElement)
     {
-        let e = document.createElement("p");
+        let e = output.ownerDocument.createElement("p");
         this.outputHTMLText(block,e);
         e.dataset.num=i;
         outputElement.appendChild(e);
     }
     outputBlockQuote(block, i, outputElement)
     {
-        let e = document.createElement("blockquote");
+        let e = output.ownerDocument.createElement("blockquote");
         this.outputHTMLText(block,e);
         e.dataset.num=i;
         outputElement.appendChild(e);
     }
     outputCodeBlock(block, i, outputElement)
     {
-        let pre = document.createElement("pre");
-        let e = document.createElement("code");
+        let pre = output.ownerDocument.createElement("pre");
+        let e = output.ownerDocument.createElement("code");
         this.outputHTMLText(block,e);
         e.dataset.num=i;
-        let bq = document.createElement("blockquote");
+        let bq = output.ownerDocument.createElement("blockquote");
         bq.dataset.num=i;
         bq.appendChild(pre);
         pre.appendChild(e);
@@ -230,9 +230,9 @@ class HTMLFormatter
     }
     outputImage(block, i, outputElement)
     {                    
-        let img = document.createElement("img");
+        let img = output.ownerDocument.createElement("img");
         img.src = block.src;
-        let e = document.createElement("p");
+        let e = output.ownerDocument.createElement("p");
         e.classList.add("description");
         e.dataset.num=i;
         this.#images.push([block.src,img]);
@@ -240,8 +240,8 @@ class HTMLFormatter
         // if it has a description, write it out
         if(block.description && block.description.length>1)
         {
-            e.appendChild(document.createElement("br"));
-            e.appendChild(document.createTextNode(block.description));
+            e.appendChild(output.ownerDocument.createElement("br"));
+            e.appendChild(output.ownerDocument.createTextNode(block.description));
         }
         if(block.elements && block.elements.length>1)
         {
@@ -272,10 +272,10 @@ class HTMLFormatter
     }
     outputOrderedList(block, i, outputElement)
     {
-        let e = document.createElement("ol");
+        let e = output.ownerDocument.createElement("ol");
         e.dataset.num=i;
         block.items.forEach((li)=>{
-            let eli = document.createElement("li");
+            let eli = output.ownerDocument.createElement("li");
             this.outputHTMLText(li,eli);
             e.appendChild(eli);
         });
@@ -284,10 +284,10 @@ class HTMLFormatter
 
     outputUnorderedList(block, i, outputElement)
     {
-        let e = document.createElement("ul");
+        let e = output.ownerDocument.createElement("ul");
         e.dataset.num=i;
         block.items.forEach((li)=>{
-            let eli = document.createElement("li");
+            let eli = output.ownerDocument.createElement("li");
             this.outputHTMLText(li,eli);
             e.appendChild(eli);
         });
@@ -295,13 +295,13 @@ class HTMLFormatter
     }
     outputDefinitionList(block, i, outputElement)
     {
-        let e = document.createElement("dl");
+        let e = output.ownerDocument.createElement("dl");
         e.dataset.num=i;
         block.items.forEach((li)=>{
-            let dt = document.createElement("dt");
+            let dt = output.ownerDocument.createElement("dt");
             this.outputHTMLText(li.term,dt);
             e.appendChild(dt);
-            let dd = document.createElement("dd");
+            let dd = output.ownerDocument.createElement("dd");
             this.outputHTMLText(li.definition,dd);
             e.appendChild(dd);
         });
@@ -309,12 +309,12 @@ class HTMLFormatter
     }
     outputTable(block, i, outputElement)
     {
-        let t = document.createElement("table");
+        let t = output.ownerDocument.createElement("table");
         t.dataset.num = i;
         block.rows.forEach((row,n)=>{
-            let tr = document.createElement("tr");
+            let tr = output.ownerDocument.createElement("tr");
             row.forEach((cell)=>{
-                let td = document.createElement(n==0?"th":"td");
+                let td = output.ownerDocument.createElement(n==0?"th":"td");
                 this.outputHTMLText(cell,td);
                 tr.appendChild(td);
             });
