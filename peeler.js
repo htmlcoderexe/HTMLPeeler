@@ -56,6 +56,9 @@ class HTMLFormatter
                 // tables
                 case "table":
                     return this.outputTable(block,i,output);
+                // embeds (experimental)
+                case "embed":
+                    return this.outputEmbed(block,i,output);
             }
         });
     }
@@ -321,6 +324,14 @@ class HTMLFormatter
             t.appendChild(tr);
         });
         outputElement.appendChild(t);
+    }
+    outputEmbed(block,i,outputElement)
+    {
+        
+        let e = output.ownerDocument.createElement("p");
+        e.dataset.num=i;
+        e.innerText=block.src;
+        outputElement.appendChild(e);
     }
 }
 
