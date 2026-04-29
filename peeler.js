@@ -28,7 +28,7 @@ class HTMLFormatter
         this.#headers=[];
         this.#images=[];
         outdoc.forEach((block, i)=>{
-            if(HTMLPeeler.blockIsEmpty(block))
+            if(block.isEmpty())
             {
                 //console.log("Skipping empty block "+i);
                 return;
@@ -346,6 +346,33 @@ class DocumentBlock
     {
         this.type = type;
     }
+    
+    isEmpty()
+    {
+        return this.text=="" && this.images.length==0;
+    }
+
+    static cmpfmt(a,b)
+    {
+        if(a==b)
+        {
+            return true;
+        }
+        if(a.length!=b.length)
+        {
+            return false;
+        }
+        let as=[...a].sort();
+        let bs=[...b].sort();
+        for(let i=0;i<a.length;i++)
+        {
+            if(a[i]!=b[i])
+            {
+                return false;
+            }
+        }
+        return true;
+    }
     static tryMerge(a,b)
     {
         ////console.warn("Trying to merge ",a ,b);
@@ -357,7 +384,7 @@ class DocumentBlock
         {
             return false;
         }
-        if(!HTMLPeeler.cmpfmt(a.styles,b.styles))
+        if(!DocumentBlock.cmpfmt(a.styles,b.styles))
         {
             return false;
         }
@@ -371,7 +398,7 @@ class DocumentBlock
     }
     static mergeElements(elements)
     {
-        console.log(elements);
+        // console.log(elements);
         let input=[...elements];
         let output=[];
         let current = null;
@@ -490,6 +517,11 @@ class DocumentTable extends DocumentBlock
         this.rows = rows?[...rows]:[];
     }
 
+    isEmpty()
+    {
+        return (!this.rows || this.rows.length<1);
+    }
+
 }
 
 class DocumentMedia extends DocumentBlock
@@ -512,6 +544,11 @@ class DocumentMedia extends DocumentBlock
         }
         this.src = src;
         this.elements = elements?[...elements]:[];
+    }
+
+    isEmpty()
+    {
+        return false;
     }
 
     get images()
@@ -633,7 +670,7 @@ class StructuredDocument
     {
         for(let i=0;i<this.#blocks.length;i++)
         {
-            console.log(this.#blocks[i]);
+            // console.log(this.#blocks[i]);
             this.#blocks[i] = this.#blocks[i].postProcess();
         }
     }
@@ -799,6 +836,12 @@ class HTMLPeeler
         this.#doc = new StructuredDocument();
         // contents = e.querySelectorAll("p, h1, h2, h3, h4, h5, h6,  header, blockquote, ul, ol, dl, table");
         // run over every child element and extract blocks
+        let h1s = this.#container.querySelectorAll("h1");
+        if(h1s.length==1)
+        {
+            this.#doc.title = h1s[0].innerText;
+            
+        }
         this.#workingset.forEach((node,i)=>{
             //console.warn("processing #"+i+"<"+node.nodeName+">");
             //console.log(node.innerHTML);
@@ -857,50 +900,6 @@ class HTMLPeeler
         return {text: text, styles: styles, link:link, image: image};
     }
         
-    static cmpfmt(a,b)
-    {
-        if(a==b)
-        {
-            return true;
-        }
-        if(a.length!=b.length)
-        {
-            return false;
-        }
-        let as=[...a].sort();
-        let bs=[...b].sort();
-        for(let i=0;i<a.length;i++)
-        {
-            if(a[i]!=b[i])
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-    static tryMergeNodes(a,b)
-    {
-        ////console.warn("Trying to merge ",a ,b);
-        if(!a || !b)
-        {
-            return false;
-        }
-        if(a.link!=b.link)
-        {
-            return false;
-        }
-        if(!HTMLPeeler.cmpfmt(a.styles,b.styles))
-        {
-            return false;
-        }
-        if(a.image!=b.image)
-        {
-            return false;
-        }
-        a.text += b.text;
-        return true;
-
-    }
     /**
      * Flattens a given node tree up to a certain depth, does not modify original object.
      * @param {Node[] | NodeList} nodes An Array of nodes or a NodeList to be flattened.
@@ -918,144 +917,6 @@ class HTMLPeeler
             //console.log(result);
             });
         return result;
-    }
-
-    static simplify(block)
-    {
-        //console.log("simplfying ", block);
-        let content = null;
-        let newcontent = [];
-        
-        if(block.elements && block.elements.length>0)
-        {
-            let imagefound = "";
-            let all_same = true;
-            block.elements.forEach((e)=>{
-                if(!e.image)
-                {
-                    e.image="";
-                }
-                if(e.image!=imagefound)
-                {
-                    if(imagefound=="")
-                    {
-                        imagefound = e.image;
-                    }
-                    else
-                    {
-                        all_same = false;
-                    }
-                }
-                //console.log(all_same,imagefound,block);
-            });
-            if(all_same && imagefound!="")
-            {
-                block.type="image";
-                block.src = imagefound;
-                block.elements.forEach((e)=>{
-                    e.image="";
-                });
-            }
-            content = block.elements;
-        }
-        else if(block.description && block.description.length>0)
-        {
-            return;
-            content = block.description;
-        }
-        else if(block.items)
-        {
-            block.items.forEach((li)=>{
-                HTMLPeeler.simplify(li);
-            });
-            return;
-        }
-        else if(block.forEach)
-        {
-            return HTMLPeeler.runMerge(block);
-        }
-        if(block.definition || block.term)
-        {
-            HTMLPeeler.simplify(block.definition);
-            HTMLPeeler.simplify(block.term);
-        }
-        if(!content || content.length<=1)
-        {
-            return;
-        }
-        let current = null;
-        newcontent=HTMLPeeler.runMerge(content);
-        block.elements=newcontent;
-        if(block.type=="unknown")
-        {
-            block.type="textblock";
-        }
-    }
-
-    static runMerge(input)
-    {
-        input=[...input];
-        let output=[];
-        let current = null;
-        while(input.length>0)
-        {
-            let next = input.shift();
-            if(HTMLPeeler.tryMergeNodes(current,next))
-            {
-
-            }
-            else
-            {
-                output.push(next);
-                current = next;
-            }
-        }
-        return output;
-    }
-
-    static elementsPlainText(elements)
-    {
-        if(!elements)
-            return "";
-        if(elements.length<1)
-            return "";
-        let accumulator ="";
-        elements.forEach((e)=>{
-            accumulator+=e.text??"";
-        });
-        accumulator=accumulator.trim();
-        return accumulator;
-    }
-    static getImages(elements)
-    {
-        if(!elements)
-            return [];
-        if(elements.length<1)
-            return [];
-        let imglist = [];
-        elements.forEach((e)=>{
-            if(e.image&&e.image!=""&&!imglist.find((img)=>img==e.image))
-            {
-                imglist.push(e.image);
-            }
-        });
-        return imglist;
-    }
-
-    static blockIsEmpty(block)
-    {
-        switch(block.type)
-        {
-            case "image":
-                return false;
-            case "header":
-            case "textblock":
-            case "blockquote":
-            case "codeblock":
-                return HTMLPeeler.elementsPlainText(block.elements)=="" && HTMLPeeler.getImages(block.elements).length==0;
-            case "table":
-                return (!block.rows || block.rows.length<1);
-        }
     }
     
     /* ------------------ *\
@@ -1131,7 +992,7 @@ class HTMLPeeler
         // h1..7
         if(TN[0]=="H" && TN.length==2 && this.#currentblock)
         {
-            HTMLPeeler.simplify(this.#currentblock);
+            //HTMLPeeler.simplify(this.#currentblock);
             this.#doc.push(this.#currentblock);
             let newblock = {type: this.#currentblock.type,elements:[]};
             let comp = {elements:[]}
@@ -1145,7 +1006,7 @@ class HTMLPeeler
         }
         if(TN=="IFRAME" && this.#currentblock)
         {
-            HTMLPeeler.simplify(this.#currentblock);
+            // HTMLPeeler.simplify(this.#currentblock);
             this.#doc.push(this.#currentblock);
             let newblock = {type: this.#currentblock.type,elements:[]};
             let comp = {elements:[]}
@@ -1256,7 +1117,7 @@ class HTMLPeeler
                 console.log(this.#currentblock);
                 comp = this.#currentblock;
                 this.#currentblock = null;
-                HTMLPeeler.simplify(comp);
+                //HTMLPeeler.simplify(comp);
                 return [comp];
                 //return getEl(,i);
 
@@ -1271,7 +1132,7 @@ class HTMLPeeler
                     tr.childNodes.forEach((td)=>{
                         let cell = [];
                         this.extractTextContent(cell,td,[],"");
-                        cell=HTMLPeeler.runMerge(cell);
+                        // cell=HTMLPeeler.runMerge(cell);
                         row.push(cell);
                     });
                     comp.rows.push(row);
@@ -1371,7 +1232,7 @@ class HTMLPeeler
             if(comp.elements.length>0)
             {
                 comp.type="textblock";
-                HTMLPeeler.simplify(comp);
+                //HTMLPeeler.simplify(comp);
                 return [comp];
             }
             results=[];
@@ -1416,11 +1277,13 @@ class HTMLPeeler
         {
             
         }
+        /*
         results.forEach((block)=>{
             ////console.error("AAAAAAAAAAAAAAAAAAAA");
             ////console.error(block);
             HTMLPeeler.simplify(block);
         });
+        //*/
         // only here if all extractions failed
         if(results.length==1 && results[0].type=="unknown")
         {

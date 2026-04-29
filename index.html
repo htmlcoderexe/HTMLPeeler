@@ -103,12 +103,11 @@ gobutton.addEventListener("click",(e)=>{
     let scraper = new HTMLPeeler(inputframe.contentDocument.body);
     scraper.depth=ad.checked?-1:depthslider.value;
     console.log(scraper.depth);
-    scraper.scrape();
+     let doc = scraper.scrape();
     //console.error("DONE SCRAPING WITH CLASS");
     
     output.innerHTML="";
     let formatter = new HTMLFormatter(scraper.blocks);
-    let doc = new StructuredDocument(scraper.blocks);
     console.log(doc.headers);
     console.log(doc.outline);
     formatter.outputHTMLDoc(output,skipfirst.value,skiplast.value);
@@ -118,53 +117,7 @@ gobutton.addEventListener("click",(e)=>{
     //console.log(formatter.images);
     let tree = doc.outline;
     makeNestedList(toc,tree);
-    console.log(scraper.blocks);
-    /*
-    let depthstack=[toc];
-    let curlvl = 2;
-    let lastli = null;
-    for(let i=0;i<headers.length;i++)
-    {
-        let h = Number.parseInt(headers[i][1].tagName[1]);
-        if(h==1)
-        {
-            continue;
-        }
-        let diff = curlvl - h;
-        if(diff<0)
-        {
-            for(j=0;j<-diff;j++)
-            {
-                let li=lastli;
-                if(!lastli)
-                    li = output.ownerDocument.createElement("li");
-                let nextlvl = document.createElement("ol");
-                let currentlist = depthstack.pop();
-                li.appendChild(nextlvl);
-                currentlist.appendChild(li);
-                depthstack.push(currentlist);
-                depthstack.push(nextlvl);
-            }
-        }
-        if(diff>0)
-        {
-            for(j=0;j<diff;j++)
-            {
-                depthstack.pop();
-            }
-        }
-        curlvl = h;
-        let curlist = depthstack.pop();
-        let li=output.ownerDocument.createElement("li");
-        let a = output.ownerDocument.createElement("a");
-        a.href="#header"+i;
-        a.innerText=headers[i][0];
-        li.appendChild(a);
-        curlist.appendChild(li);
-        lastli = li;
-        depthstack.push(curlist);
-    }
-    //*/
+    console.log(doc);
 });
 depthslider.addEventListener("input",(e)=>{
     depthinfo.innerHTML="";
