@@ -342,9 +342,107 @@ class DocumentBlock
 
     elements = [];
 
-    constructor(type)
+    constructor(type="unknown")
     {
         this.type = type;
+    }
+    static tryMerge(a,b)
+    {
+        ////console.warn("Trying to merge ",a ,b);
+        if(!a || !b)
+        {
+            return false;
+        }
+        if(a.link!=b.link)
+        {
+            return false;
+        }
+        if(!HTMLPeeler.cmpfmt(a.styles,b.styles))
+        {
+            return false;
+        }
+        if(a.image!=b.image)
+        {
+            return false;
+        }
+        a.text += b.text;
+        return true;
+
+    }
+    static mergeElements(elements)
+    {
+        console.log(elements);
+        let input=[...elements];
+        let output=[];
+        let current = null;
+        while(input.length>0)
+        {
+            let next = input.shift();
+            if(DocumentBlock.tryMerge(current,next))
+            {
+
+            }
+            else
+            {
+                output.push(next);
+                current = next;
+            }
+        }
+        return output;
+    }
+    postProcess()
+    {
+        let content = null;
+        let newcontent = [];
+        let block = this;
+        // check if this block could be an image
+        if(this.elements && this.elements.length>0)
+        {
+            let imagefound = "";
+            let all_same = true;
+            this.elements.forEach((e)=>{
+                if(!e.image)
+                {
+                    e.image="";
+                }
+                if(e.image!=imagefound)
+                {
+                    if(imagefound=="")
+                    {
+                        imagefound = e.image;
+                    }
+                    else
+                    {
+                        all_same = false;
+                    }
+                }
+                //console.log(all_same,imagefound,block);
+            });
+            if(all_same && imagefound!="")
+            {
+                this.elements.forEach((e)=>{
+                    e.image="";
+                });
+                block = new DocumentMedia("image",imagefound,this.elements);
+            }
+            content = block.elements;
+        }
+        if(block.elements)
+        {
+            block.elements = DocumentBlock.mergeElements(block.elements);
+        }
+        return block;
+        if(!content || content.length<=1)
+        {
+            return;
+        }
+        let current = null;
+        newcontent=DocumentBlock.mergeElements(content);
+        block.elements=newcontent;
+        if(block.type=="unknown")
+        {
+            block.type="textblock";
+        }
     }
 
     get text()
@@ -359,7 +457,7 @@ class DocumentBlock
                 accumulator+=e.text;
         });
         accumulator = accumulator.trim();
-        return 
+        return accumulator;
     }
 
     get images()
@@ -407,7 +505,8 @@ class DocumentMedia extends DocumentBlock
             case "embed":
             case "video":
             case "audio":
-                super("mediaType");
+                {super("mediaType");break;}
+
             default:
                 super("unknown");
         }
@@ -444,6 +543,29 @@ class DocumentList extends DocumentBlock
         }
         this.items = items?[...items]:[];
     }
+    postProcess()
+    {
+        // empty list returned as is;
+        if(!this.items)
+        {
+            return this;
+        }
+        if(this.listType=="definition")
+        {
+            this.items.forEach((item)=>{
+                item.term = DocumentBlock.mergeElements(item.term);
+                item.definition = DocumentBlock.mergeElements(item.definition);
+            });
+        }
+        else
+        {
+            for(let i=0;i<this.items.length;i++)
+            {
+                this.items[i] = DocumentBlock.mergeElements(this.items[i]);
+            }
+        }
+        return this;
+    }
 }
 
 
@@ -457,7 +579,25 @@ class DocumentParagraph extends DocumentBlock
     }
 }
 
+class DocumentQuote extends DocumentBlock
+{
 
+    constructor(elements = [])
+    {
+        super("quote");
+        this.elements = elements?[...elements]:[];
+    }
+}
+
+class DocumentCode extends DocumentBlock
+{
+
+    constructor(elements = [])
+    {
+        super("codeblock");
+        this.elements = elements?[...elements]:[];
+    }
+}
 class DocumentHeader extends DocumentBlock
 {
 
@@ -479,9 +619,23 @@ class StructuredDocument
     
     title = "";
 
-    constructor(blocks)
+    constructor(blocks=[])
     {
         this.#blocks=[...blocks];
+    }
+
+    push(block)
+    {
+        this.#blocks.push(block);
+    }
+
+    postProcess()
+    {
+        for(let i=0;i<this.#blocks.length;i++)
+        {
+            console.log(this.#blocks[i]);
+            this.#blocks[i] = this.#blocks[i].postProcess();
+        }
     }
 
     get blocks()
@@ -495,7 +649,7 @@ class StructuredDocument
         this.#blocks.forEach((b,i)=>{
             if(b.type=="header")
             {
-                b.text="aaaa";
+                //b.text="aaaa";
                 result.push({level: b.level, text: b.text, index: i});
             }
         });
@@ -626,7 +780,7 @@ class HTMLPeeler
      */
     get blocks()
     {
-        return [...this.#doc];
+        return [...this.#doc.blocks];
     }
     get headers()
     {
@@ -642,7 +796,7 @@ class HTMLPeeler
         {
             return null;
         }
-        this.#doc = [];
+        this.#doc = new StructuredDocument();
         // contents = e.querySelectorAll("p, h1, h2, h3, h4, h5, h6,  header, blockquote, ul, ol, dl, table");
         // run over every child element and extract blocks
         this.#workingset.forEach((node,i)=>{
@@ -658,6 +812,7 @@ class HTMLPeeler
             }
             //*/
         });
+        this.#doc.postProcess();
         //console.error("Done processing elements, formatting the data...");
         //console.log(this.#doc);
         return this.#doc;
@@ -681,7 +836,7 @@ class HTMLPeeler
             this.#workingset = HTMLPeeler.flatten(this.#container.childNodes,i);
             this.scrape();
             let headers=0;
-            this.#doc.forEach((b)=>{
+            this.#doc.blocks.forEach((b)=>{
                 if(b.type=="header")
                     headers++;
             });
@@ -1058,7 +1213,7 @@ class HTMLPeeler
         let TN = e.nodeName;
         let nt = e.nodeType;
         //console.warn(levelref+"<"+TN+">");
-        let comp = {"type": "unknown", "content":[],elements:[]};
+        let comp = new DocumentBlock();
         // do a text block
         if(nt != Node.ELEMENT_NODE)
         {
@@ -1067,7 +1222,7 @@ class HTMLPeeler
             //console.info("---------------------");
             if(level > -1 && e.textContent.trim()!="")
             {
-                comp.type="textblock";
+                comp = new DocumentParagraph();
                 this.extractTextContent(comp.elements,e,[],"");
                 this.#doc.push(comp);
                 //console.info("text node @"+levelref+" added.");
@@ -1109,8 +1264,7 @@ class HTMLPeeler
             else
             {
                 //console.log("regular table");
-                comp.type="table";
-                comp.rows=[];
+                comp = new DocumentTable();
                 //console.log(e.rows);
                 Array.from(e.rows).forEach((tr)=>{
                     let row = [];
@@ -1128,8 +1282,7 @@ class HTMLPeeler
         // image
         if(TN =="IMG")
         {
-            comp.type="image";
-            comp.src =e.src;
+            comp = new DocumentMedia("image",e.src);
             // try to get a description
             if(e.alt!="")
             {
@@ -1143,28 +1296,21 @@ class HTMLPeeler
         // might not appear but try to detect embeds
         if(TN == "IFRAME")
         {
-            comp.type="embed";
-            comp.src = e.src;
+            comp = new DocumentMedia("embed",e.src);
             // getVideoTypeInfo(e.src,comp);
         }
         // do lists
         if(TN =="OL")
         {
-            comp.type="list";
-            comp.items = this.getRegularList(e);
-            comp.listType="ordered";
+            comp = new DocumentList("ordered",this.getRegularList(e));
         }
         if(TN =="UL")
-        {
-            comp.type="list";
-            comp.items = this.getRegularList(e);
-            comp.listType="unordered";
+        { 
+            comp = new DocumentList("unordered",this.getRegularList(e));
         }
         if(TN=="DL")
         {
-            comp.type="list";
-            comp.items = this.getDefinitionList(e);
-            comp.listType ="definition";
+            comp = new DocumentList("definition",this.getDefinitionList(e));
         }
         // skip navs
         if(TN=="NAV")
@@ -1174,7 +1320,7 @@ class HTMLPeeler
         // paragraphs, usually just contain text
         if(TN =="P")
         {
-            comp.type="textblock";
+           comp=new DocumentParagraph();
             this.extractTextContent(comp.elements,e,[],"");
             // the check for textblock exists because
             // it may turn into an image block
@@ -1206,8 +1352,7 @@ class HTMLPeeler
         // h1..7
         if(TN[0]=="H" && TN.length==2)
         {
-            comp.type="header";
-            comp.level=Number.parseInt(TN[1]);
+            comp = new DocumentHeader(Number.parseInt(TN[1]));
             this.extractTextContent(comp.elements,e,[],"");
             return [comp];
         }
