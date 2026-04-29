@@ -537,7 +537,7 @@ class DocumentMedia extends DocumentBlock
             case "embed":
             case "video":
             case "audio":
-                {super("mediaType");break;}
+                {super(mediaType);break;}
 
             default:
                 super("unknown");
@@ -714,6 +714,7 @@ class StructuredDocument
             {
                 for(let j=0;j<-diff;j++)
                 {
+                    let currentlist = depthstack.pop();
                     let li=lastli;
                     if(!lastli)
                     {
@@ -721,7 +722,6 @@ class StructuredDocument
                         currentlist.push(li);
                     }
                     let nextlvl = li.subheadings;
-                    let currentlist = depthstack.pop();
                     depthstack.push(currentlist);
                     depthstack.push(nextlvl);
                 }
@@ -763,8 +763,6 @@ class HTMLPeeler
     #container = null;
     #doc = [];
     #workingset = null;
-    #headers = [];
-    #images = [];
     #depth = 0;
     #currentblock = null;
     /* ------------------ *\
@@ -837,9 +835,15 @@ class HTMLPeeler
         // contents = e.querySelectorAll("p, h1, h2, h3, h4, h5, h6,  header, blockquote, ul, ol, dl, table");
         // run over every child element and extract blocks
         let h1s = this.#container.querySelectorAll("h1");
-        if(h1s.length==1)
+        console.log(h1s);
+        if(h1s.length>0)
         {
-            this.#doc.title = h1s[0].innerText;
+            let t="";
+            h1s.forEach((n)=>{
+                if(n.innerText.length>t.length)
+                    t=n.innerText;
+            });
+            this.#doc.title = t;
             
         }
         this.#workingset.forEach((node,i)=>{
