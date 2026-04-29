@@ -335,6 +335,237 @@ class HTMLFormatter
     }
 }
 
+class DocumentBlock
+{
+
+    type = "unknown";
+
+    elements = [];
+
+    constructor(type)
+    {
+        this.type = type;
+    }
+
+    get text()
+    {
+        if(!this.elements)
+            return "";
+        if(this.elements.length<1)
+            return "";
+        let accumulator = "";
+        this.elements.forEach((e)=>{
+            if(e.text)
+                accumulator+=e.text;
+        });
+        accumulator = accumulator.trim();
+        return 
+    }
+
+    get images()
+    {
+        if(!this.elements)
+            return [];
+        if(this.elements.length<1)
+            return [];
+        let imglist = [];
+        this.elements.forEach((e)=>{
+            if(e.image&&e.image!=""&&!imglist.find((img)=>img==e.image))
+            {
+                imglist.push(e.image);
+            }
+        });
+        return imglist;
+    }
+
+}
+
+
+class DocumentTable extends DocumentBlock
+{
+
+    rows = "";
+    
+    constructor(rows = [])
+    {
+        super("table");
+        this.rows = rows?[...rows]:[];
+    }
+
+}
+
+class DocumentMedia extends DocumentBlock
+{
+
+    src = "";
+
+    constructor(mediaType, src, elements = [])
+    {
+        switch(mediaType)
+        {
+            case "image":
+            case "embed":
+            case "video":
+            case "audio":
+                super("mediaType");
+            default:
+                super("unknown");
+        }
+        this.src = src;
+        this.elements = elements?[...elements]:[];
+    }
+
+    get images()
+    {
+        let result = super.images;
+        if(this.type == "image")
+        {
+            result.push(this.src);
+        }
+        return result;
+    }
+}
+
+
+class DocumentList extends DocumentBlock
+{
+    items = [];
+
+    constructor(listType, items=[])
+    {
+        super("list");
+        this.listType="unknown";
+        switch(listType)
+        {
+            case "ordered":
+            case "unordered":
+            case "definition":
+                this.listType = listType;
+        }
+        this.items = items?[...items]:[];
+    }
+}
+
+
+class DocumentParagraph extends DocumentBlock
+{
+
+    constructor(elements = [])
+    {
+        super("textblock");
+        this.elements = elements?[...elements]:[];
+    }
+}
+
+
+class DocumentHeader extends DocumentBlock
+{
+
+    level = 1;
+
+    constructor(level = 1, elements = [])
+    {
+        super("header");
+        this.level = level;
+        this.elements = [];
+    }
+}
+
+
+class StructuredDocument
+{
+
+    #blocks = [];
+    
+    title = "";
+
+    constructor(blocks)
+    {
+        this.#blocks=[...blocks];
+    }
+
+    get blocks()
+    {
+        return [...this.#blocks];
+    }
+
+    get headers()
+    {
+        let result = [];
+        this.#blocks.forEach((b,i)=>{
+            if(b.type=="header")
+            {
+                b.text="aaaa";
+                result.push({level: b.level, text: b.text, index: i});
+            }
+        });
+        return result;
+    }
+
+    get outline()
+    {
+        let flat = this.headers;
+        
+        let curlvl = 2;
+        let lastli = null;
+        let root = [];
+        let depthstack = [root];
+        for(let i=0;i<flat.length;i++)
+        {
+            let header = flat[i];
+            if(header.level == 1)
+            {
+                continue;
+            }
+            let diff = curlvl - header.level;
+            // bigger level, smaller heading, increase nesting
+            if(diff<0)
+            {
+                for(let j=0;j<-diff;j++)
+                {
+                    let li=lastli;
+                    if(!lastli)
+                    {
+                        li = {level: 1, text:document.title, index:0, subheadings:[]};
+                        currentlist.push(li);
+                    }
+                    let nextlvl = li.subheadings;
+                    let currentlist = depthstack.pop();
+                    depthstack.push(currentlist);
+                    depthstack.push(nextlvl);
+                }
+            }
+            // smaller level, bigger heading, decrease nesting
+            if(diff>0)
+            {
+                for(let j=0;j<diff;j++)
+                {
+                    depthstack.pop();
+                }
+            }
+            curlvl = header.level;
+            let curlist = depthstack.pop();
+            let li={level: header.level, text: header.text, index: header.index, subheadings: []};
+            curlist.push(li);
+            lastli = li;
+            depthstack.push(curlist);
+        }
+        return root;
+    }
+
+    get images()
+    {
+        let imglist = [];
+        this.#blocks.forEach((b)=>{
+            let blockimages = b.images;
+            if(blockimages && blockimages.length>0)
+            {
+                imglist.push([...blockimages]);
+            }
+        });
+        return imglist;
+    }
+}
 
 class HTMLPeeler
 {
@@ -396,6 +627,14 @@ class HTMLPeeler
     get blocks()
     {
         return [...this.#doc];
+    }
+    get headers()
+    {
+        let result = [];
+        this.#doc.forEach((b)=>{
+            if(b.type=="header")
+                result.push(b.level);
+        });
     }
     scrape()
     {
