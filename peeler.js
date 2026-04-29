@@ -360,6 +360,11 @@ class HTMLPeeler
     set depth(value)
     {
         //console.log(value);
+        if(value==-1)
+        {
+            this.autodetect();
+            return;
+        }
         this.#depth=value;
         this.#workingset = HTMLPeeler.flatten(this.#container.childNodes,this.#depth);
     }
@@ -425,6 +430,34 @@ class HTMLPeeler
      *     functions      *
      *                    *
     \* ------------------ */
+
+    autodetect()
+    {
+        console.log("trying to autodetect...");
+        let headersmax=0;
+        let maxdepth=0;
+        for(let i=0;i<10;i++)
+        {
+            console.log("trying level "+i+"...");
+            this.#workingset = HTMLPeeler.flatten(this.#container.childNodes,i);
+            this.scrape();
+            let headers=0;
+            this.#doc.forEach((b)=>{
+                if(b.type=="header")
+                    headers++;
+            });
+            if(headers>headersmax)
+            {
+                headersmax=headers;
+                maxdepth=i;
+                console.log("Best found so far: "+headersmax+" at level "+i+"...");
+            }
+        }
+        this.#depth=maxdepth;
+        this.#workingset = HTMLPeeler.flatten(this.#container.childNodes,this.#depth);
+        console.log("depth is now "+maxdepth+"");
+    }
+
     static makeTextElement(text, styles, link, image)
     {
         return {text: text, styles: styles, link:link, image: image};

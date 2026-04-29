@@ -67,7 +67,8 @@
 </style>
 <script src="peeler.js"></script>
 <div id="targetcontainer"><iframe sandbox="allow-same-origin" id="target" srcdoc="<!doctype html><head></head><body contenteditable>a</body></html>"></iframe><iframe id="target2"></iframe></div><ul id="depthinfo"></ul><ol id="toc"></ol><br />
-<button id="scrape">go</button><input type="range" min="0" max="10" id="scraperdepth" /><span>Skip first </span><input type="number" id="skipfirst" value="0" /><span> and last </span><input value="0" type="number" id="skiplast" /><span> blocks.</span>
+<input type="checkbox" id="autodetect" /><input type="range" min="0" max="10" id="scraperdepth" /><span>Skip first </span><input type="number" id="skipfirst" value="0" /><span> and last </span><input value="0" type="number" id="skiplast" /><span> blocks.</span>
+<br /><button id="scrape">go</button>
 <div id="output"></div>
 <script>
 let output=document.getElementById("output");
@@ -78,9 +79,14 @@ let toc = document.getElementById("toc");
 let skiplast = document.getElementById("skiplast");
 let skipfirst = document.getElementById("skipfirst");
 //*
+let ad = document.getElementById("autodetect");
+ad.addEventListener("change",(e)=>{
+    depthslider.disabled=ad.checked;
+});
 gobutton.addEventListener("click",(e)=>{
     let scraper = new HTMLPeeler(inputframe.contentDocument.body);
-    scraper.depth=depthslider.value;
+    scraper.depth=ad.checked?-1:depthslider.value;
+    console.log(scraper.depth);
     scraper.scrape();
     //console.error("DONE SCRAPING WITH CLASS");
     
@@ -102,22 +108,28 @@ gobutton.addEventListener("click",(e)=>{
         {
             continue;
         }
-        if(h>curlvl)
+        let diff = curlvl - h;
+        if(diff<0)
         {
-
-            let li=lastli;
-            if(!lastli)
-                li = output.ownerDocument.createElement("li");
-            let nextlvl = document.createElement("ol");
-            let currentlist = depthstack.pop();
-            li.appendChild(nextlvl);
-            currentlist.appendChild(li);
-            depthstack.push(currentlist);
-            depthstack.push(nextlvl);
+            for(j=0;j<-diff;j++)
+            {
+                let li=lastli;
+                if(!lastli)
+                    li = output.ownerDocument.createElement("li");
+                let nextlvl = document.createElement("ol");
+                let currentlist = depthstack.pop();
+                li.appendChild(nextlvl);
+                currentlist.appendChild(li);
+                depthstack.push(currentlist);
+                depthstack.push(nextlvl);
+            }
         }
-        if(h<curlvl)
+        if(diff>0)
         {
-            depthstack.pop();
+            for(j=0;j<diff;j++)
+            {
+                depthstack.pop();
+            }
         }
         curlvl = h;
         let curlist = depthstack.pop();
@@ -159,6 +171,7 @@ inputframe.addEventListener("load",(e)=>
 });
 //inputframe.addEventListener("blur",(e)=>{
 //depthslider.dispatchEvent(new Event("input"));});
+ad.dispatchEvent(new Event("change"));
 </script>
 </body>
 </html>
