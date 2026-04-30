@@ -401,7 +401,37 @@ class DocumentBlock
     {
         return this.text=="" && this.images.length==0;
     }
-
+    static continue(block)
+    {
+        switch(block.type)
+        {
+            // h1..7
+            case "header":
+                return new DocumentHeader(block.level);
+            // plain text block
+            case "textblock":
+                return new DocumentParagraph();
+            // blockquote
+            case "quote":
+                return new DocumentQuote();
+            // code, gets put inside a blockquote
+            case "codeblock":
+                return new DocumentCode();
+            // image, gets a description attached
+            case "image":
+                return new DocumentMedia("image",block.src);
+            // ordered or unordered list, items as blocks
+            case "list":
+                return new DocumentList(block.listType);
+            // tables
+            case "table":
+                return new DocumentTable();
+            // embeds (experimental)
+            case "embed":
+                return new DocumentMedia("embed", block.src);
+        }
+        return new DocumentBlock();
+    }
     static cmpfmt(a,b)
     {
         if(a==b)
@@ -919,7 +949,7 @@ class HTMLPeeler
         // contents = e.querySelectorAll("p, h1, h2, h3, h4, h5, h6,  header, blockquote, ul, ol, dl, table");
         // run over every child element and extract blocks
         let h1s = this.#container.querySelectorAll("h1");
-        console.log(h1s);
+        // console.log(h1s);
         if(h1s.length>0)
         {
             let t="";
@@ -1082,10 +1112,8 @@ class HTMLPeeler
         {
             //HTMLPeeler.simplify(this.#currentblock);
             this.#doc.push(this.#currentblock);
-            let newblock = {type: this.#currentblock.type,elements:[]};
-            let comp = {elements:[]}
-            comp.type="header";
-            comp.level=Number.parseInt(TN[1]);
+            let newblock =  DocumentBlock.continue(this.#currentblock);
+            let comp = new DocumentHeader(Number.parseInt(TN[1]));
             element.childNodes.forEach((e)=>{
             this.extractTextContent(comp.elements,e,[],"");});
             this.#doc.push(comp);
@@ -1096,10 +1124,8 @@ class HTMLPeeler
         {
             // HTMLPeeler.simplify(this.#currentblock);
             this.#doc.push(this.#currentblock);
-            let newblock = {type: this.#currentblock.type,elements:[]};
-            let comp = {elements:[]}
-            comp.type="embed";
-            comp.src=element.src;
+            let newblock =  DocumentBlock.continue(this.#currentblock);
+            let comp = new DocumentMedia("embed",element.src);
             this.#doc.push(comp);
             this.#currentblock = newblock;
             return;
@@ -1192,7 +1218,7 @@ class HTMLPeeler
                 let results = [];
                 this.#currentblock=comp;
                 td.childNodes.forEach((n)=>{
-                    console.log(n,this.#currentblock);
+                    //console.log(n,this.#currentblock);
                     this.extractTextContent(this.#currentblock.elements,n,[],"");
                     
                     //let el = this.extractBlocks(n,i,level+1);
@@ -1202,7 +1228,7 @@ class HTMLPeeler
                     }//*/
                 });
                 //this.#doc.push();
-                console.log(this.#currentblock);
+                //console.log(this.#currentblock);
                 comp = this.#currentblock;
                 this.#currentblock = null;
                 //HTMLPeeler.simplify(comp);
@@ -1282,13 +1308,13 @@ class HTMLPeeler
         // same for blockquotes
         if(TN=="BLOCKQUOTE")
         {
-            comp.type="quote";
+            comp = new DocumentQuote();
             this.extractTextContent(comp.elements,e,[],"");
         }
         // same for pre->code
         if(TN=="PRE" && e.children && e.children[0] && e.children[0].nodeName=="CODE")
         {
-            comp.type="codeblock";
+            comp = new DocumentCode();
             let cc = e.children[0].childNodes;
             // okay the bug I was trying to fix apparently had to do with PRE being able to 
             // have a "tab-size" style while default seems more like 8
