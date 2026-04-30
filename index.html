@@ -71,40 +71,46 @@
 <br /><button id="scrape">go</button>
 <div id="output"></div>
 <script>
-let output=document.getElementById("output");
+// pasting area
+let inputframe=document.getElementById("target");
+// settings
+let ad = document.getElementById("autodetect");
 let depthslider = document.getElementById("scraperdepth");
-let depthinfo = document.getElementById("depthinfo");
-let gobutton=document.getElementById("scrape");
-let toc = document.getElementById("toc");
 let skiplast = document.getElementById("skiplast");
 let skipfirst = document.getElementById("skipfirst");
-let ad = document.getElementById("autodetect");
-let inputframe=document.getElementById("target");
-
+// runs the peeler/formatter
+let gobutton=document.getElementById("scrape");
+// outputs
+let output = document.getElementById("output");
+let depthinfo = document.getElementById("depthinfo");
+let toc = document.getElementById("toc");
 ad.addEventListener("change",(e)=>{
     depthslider.disabled=ad.checked;
 });
-
+// actually running the process
 gobutton.addEventListener("click",(e)=>{
+    // clear out everything
     output.innerHTML="";
     toc.innerHTML="";
-
+    // init peeler with given settings
     let scraper = new HTMLPeeler(inputframe.contentDocument.body);
+    // autodetect mode or manual
     scraper.depth=ad.checked?-1:depthslider.value;
-
+    // run peeler
     let doc = scraper.scrape();
+    // drop first/last blocks as needed
     doc.trim(skipfirst.value,skiplast.value);
-    
+    // prepare and run formatter
     let formatter = new HTMLFormatter(doc);
     formatter.outputHTMLDoc(output);
     formatter.outputTOC(toc);
-
+    // output results to console for debugging and admiration
     console.log(doc.images);
     console.log(doc.headers);
     console.log(formatter.outline);
     console.log(doc);
 });
-
+// moving the slider shows a preview of detected tags on given depth
 depthslider.addEventListener("input",(e)=>{
     depthinfo.innerHTML="";
     let scraper=new HTMLPeeler(inputframe.contentDocument.body);
@@ -117,21 +123,24 @@ depthslider.addEventListener("input",(e)=>{
         depthinfo.appendChild(li);
     });
 });
-
+// only run this on load as the srcdoc replaces the body after the page loads
 inputframe.addEventListener("load",(e)=> 
 {
-
+    // add an onPaste event to get the clipboard data and inject into body
+    // default paste filters out iframes and other possibly useful things
     inputframe.contentDocument.body.addEventListener("paste",(e)=>{
         let d = e.clipboardData.getData('text/html');
+        // keep this for inspection purposes
         console.log(d);
         // this is probably not a good idea - check for proper way
         inputframe.contentDocument.body.innerHTML = d;
         e.preventDefault();
     });
 });
-
-//inputframe.addEventListener("blur",(e)=>{
-//depthslider.dispatchEvent(new Event("input"));});
+// trigger a redo of the depth preview procedure - #TODO better place for this to trigger
+inputframe.addEventListener("blur",(e)=>{
+    depthslider.dispatchEvent(new Event("input"));
+});
 
 ad.dispatchEvent(new Event("change"));
 
