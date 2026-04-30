@@ -78,51 +78,33 @@ let gobutton=document.getElementById("scrape");
 let toc = document.getElementById("toc");
 let skiplast = document.getElementById("skiplast");
 let skipfirst = document.getElementById("skipfirst");
-//*
 let ad = document.getElementById("autodetect");
+let inputframe=document.getElementById("target");
+
 ad.addEventListener("change",(e)=>{
     depthslider.disabled=ad.checked;
 });
 
-function makeNestedList(root, branch)
-{
-    branch.forEach((item)=>{
-        let li = document.createElement("li");
-        let a = document.createElement("a");
-        li.appendChild(a);
-        a.href="#"+item.element.id;
-        a.innerText=item.text;
-        root.appendChild(li);
-        if(item.subheadings && item.subheadings.length>0)
-        {
-            let ol = document.createElement("ol");
-            li.appendChild(ol);
-            makeNestedList(ol,item.subheadings);
-        }
-    });
-}
-
 gobutton.addEventListener("click",(e)=>{
+    output.innerHTML="";
+    toc.innerHTML="";
+
     let scraper = new HTMLPeeler(inputframe.contentDocument.body);
     scraper.depth=ad.checked?-1:depthslider.value;
-    console.log(scraper.depth);
+
     let doc = scraper.scrape();
     doc.trim(skipfirst.value,skiplast.value);
-    //console.error("DONE SCRAPING WITH CLASS");
     
-    output.innerHTML="";
     let formatter = new HTMLFormatter(doc);
-    console.log(doc.headers);
-    console.log(doc.outline);
     formatter.outputHTMLDoc(output);
-    // scraper.outputHTMLDoc(output,skipfirst.value,skiplast.value);
-    toc.innerHTML="";
-    let headers = formatter.headers;
-    //console.log(formatter.images);
-    let tree = formatter.outline;
-    makeNestedList(toc,tree);
+    formatter.outputTOC(toc);
+
+    console.log(doc.images);
+    console.log(doc.headers);
+    console.log(formatter.outline);
     console.log(doc);
 });
+
 depthslider.addEventListener("input",(e)=>{
     depthinfo.innerHTML="";
     let scraper=new HTMLPeeler(inputframe.contentDocument.body);
@@ -135,8 +117,7 @@ depthslider.addEventListener("input",(e)=>{
         depthinfo.appendChild(li);
     });
 });
-//*/
-let inputframe=document.getElementById("target");
+
 inputframe.addEventListener("load",(e)=> 
 {
 
@@ -147,11 +128,13 @@ inputframe.addEventListener("load",(e)=>
         inputframe.contentDocument.body.innerHTML = d;
         e.preventDefault();
     });
-//*/
 });
+
 //inputframe.addEventListener("blur",(e)=>{
 //depthslider.dispatchEvent(new Event("input"));});
+
 ad.dispatchEvent(new Event("change"));
+
 </script>
 </body>
 </html>

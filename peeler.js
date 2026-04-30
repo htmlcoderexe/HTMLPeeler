@@ -70,22 +70,32 @@ class HTMLFormatter
             }
         });
     }
-    /*
+    
     /**
-     * Returns a list of images, as tuples of [URL, HTML Element of the img tag]
-     * /
-    get images()
+     * Outputs a nested TOC based on the document's outline.
+     */
+    outputTOC(output)
     {
-        return [...this.#images];
+        HTMLFormatter.outputTOCBranch(output,this.outline)
     }
-    /**
-     * Returns a list of header anchor names, as tuples of [header text, HTML Element]
-     * /
-    get headers()
+
+    static outputTOCBranch(output,branch)
     {
-        return [...this.#headers];
+        branch.forEach((item)=>{
+            let li = output.ownerDocument.createElement("li");
+            let a = output.ownerDocument.createElement("a");
+            li.appendChild(a);
+            a.href="#"+item.element.id;
+            a.innerText=item.text;
+            output.appendChild(li);
+            if(item.subheadings && item.subheadings.length>0)
+            {
+                let ol = output.ownerDocument.createElement("ol");
+                li.appendChild(ol);
+                HTMLFormatter.outputTOCBranch(ol,item.subheadings);
+            }
+        });
     }
-    //*/
     /* ------------------ *\
      *                    *
      *     HTML output    *
