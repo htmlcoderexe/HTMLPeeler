@@ -5,12 +5,25 @@ class MDFormatter
     #images = [];
 }
 
+/**
+ * Provides functions to output a StructuredDocument as HTML.
+ */
 class HTMLFormatter
 {
     #doc = null;
+    /**
+     * List of every image in the document.
+     */
+    images = [];
+    /**
+     * List of every header in the document.
+     */
     headers = [];
+    /**
+     * A nested tree creating an outline of the document. Contains references to HTML
+     * elements that were output the last time the formatter ran.
+     */
     outline = [];
-    #images = [];
     /* ------------------ *\
      *                    *
      *     Public API     *
@@ -22,10 +35,11 @@ class HTMLFormatter
      */
     constructor(doc)
     {
-        this.#doc=doc;
-        this.headers=this.#doc.headers;
-        this.images=this.#doc.images;
-        this.outline=this.#doc.outline;
+        this.#doc = doc;
+        // note these are copies and do not interact with the original document
+        this.headers = this.#doc.headers;
+        this.images = this.#doc.images;
+        this.outline = this.#doc.outline;
     }
     /**
      * Formats the document as HTML and inserts into target element
@@ -45,62 +59,74 @@ class HTMLFormatter
             {
                 // h1..7
                 case "header":
-                    return this.outputHeader(block,i,output);
+                    return this.outputHeader(block, i, output);
                 // plain text block
                 case "textblock":
-                    return this.outputParagraph(block,i,output);
+                    return this.outputParagraph(block, i, output);
                 // blockquote
                 case "quote":
-                    return this.outputBlockQuote(block,i,output);
+                    return this.outputBlockQuote(block, i, output);
                 // code, gets put inside a blockquote
                 case "codeblock":
-                    return this.outputCodeBlock(block,i,output);
+                    return this.outputCodeBlock(block, i, output);
                 // image, gets a description attached
                 case "image":
-                    return this.outputImage(block,i,output);
+                    return this.outputImage(block, i, output);
                 // ordered or unordered list, items as blocks
                 case "list":
-                    return this.outputList(block,i,output);
+                    return this.outputList(block, i, output);
                 // tables
                 case "table":
-                    return this.outputTable(block,i,output);
+                    return this.outputTable(block, i, output);
                 // embeds (experimental)
                 case "embed":
-                    return this.outputEmbed(block,i,output);
+                    return this.outputEmbed(block, i, output);
             }
         });
     }
     
     /**
      * Outputs a nested TOC based on the document's outline.
+     * @param {HTMLElement} output the element to output the outline into.
      */
     outputTOC(output)
     {
-        HTMLFormatter.outputTOCBranch(output,this.outline)
-    }
-
-    static outputTOCBranch(output,branch)
-    {
-        branch.forEach((item)=>{
-            let li = output.ownerDocument.createElement("li");
-            let a = output.ownerDocument.createElement("a");
-            li.appendChild(a);
-            a.href="#"+item.element.id;
-            a.innerText=item.text;
-            output.appendChild(li);
-            if(item.subheadings && item.subheadings.length>0)
-            {
-                let ol = output.ownerDocument.createElement("ol");
-                li.appendChild(ol);
-                HTMLFormatter.outputTOCBranch(ol,item.subheadings);
-            }
-        });
+        HTMLFormatter.outputTOCBranch(output, this.outline)
     }
     /* ------------------ *\
      *                    *
      *     HTML output    *
      *                    *
     \* ------------------ */
+    /**
+     * Outputs recursively ordered lists into the given eleement.
+     * @param {HTMLElement} output the element to output the resulting subtree to. 
+     * @param {Object[]} branch a branch of an outline tree containing headings
+     * with possible subheadings. 
+     */
+    static outputTOCBranch(output, branch)
+    {
+        branch.forEach((item)=>{
+            let li = output.ownerDocument.createElement("li");
+            let a = output.ownerDocument.createElement("a");
+            li.appendChild(a);
+            a.href = "#" + item.element.id;
+            a.innerText = item.text;
+            output.appendChild(li);
+            if(item.subheadings && item.subheadings.length>0)
+            {
+                let ol = output.ownerDocument.createElement("ol");
+                li.appendChild(ol);
+                HTMLFormatter.outputTOCBranch(ol, item.subheadings);
+            }
+        });
+    }
+    /**
+     * Outputs a single block element as HTML
+     * @param {*} textElement 
+     * @param {*} imgContainer 
+     * @returns 
+     */
     outputHTMLElement(textElement, imgContainer)
     {
         // contains the text
@@ -127,7 +153,7 @@ class HTMLFormatter
             currentNode.className="inlineImg";
             let img = output.ownerDocument.createElement("img");
             img.src=textElement.image;
-            this.#images.push([textElement.image,img]);
+            this.images.push([textElement.image,img]);
             topNode.appendChild(img);
             topNode.appendChild(output.ownerDocument.createElement("br"));
         }
@@ -261,7 +287,7 @@ class HTMLFormatter
         let e = output.ownerDocument.createElement("p");
         e.classList.add("description");
         e.dataset.num=i;
-        this.#images.push([block.src,img]);
+        this.images.push([block.src,img]);
         e.appendChild(img);
         // if it has a description, write it out
         if(block.description && block.description.length>1)
@@ -357,6 +383,7 @@ class HTMLFormatter
         outputElement.appendChild(e);
     }
 }
+
 
 class DocumentBlock
 {
@@ -547,6 +574,7 @@ class DocumentTable extends DocumentBlock
 
 }
 
+
 class DocumentMedia extends DocumentBlock
 {
 
@@ -639,6 +667,7 @@ class DocumentParagraph extends DocumentBlock
     }
 }
 
+
 class DocumentQuote extends DocumentBlock
 {
 
@@ -649,6 +678,7 @@ class DocumentQuote extends DocumentBlock
     }
 }
 
+
 class DocumentCode extends DocumentBlock
 {
 
@@ -658,6 +688,8 @@ class DocumentCode extends DocumentBlock
         this.elements = elements?[...elements]:[];
     }
 }
+
+
 class DocumentHeader extends DocumentBlock
 {
 
@@ -808,6 +840,7 @@ class StructuredDocument
         return imglist;
     }
 }
+
 
 class HTMLPeeler
 {
