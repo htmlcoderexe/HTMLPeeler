@@ -88,7 +88,10 @@ function makeNestedList(root, branch)
 {
     branch.forEach((item)=>{
         let li = document.createElement("li");
-        li.innerText=item.text;
+        let a = document.createElement("a");
+        li.appendChild(a);
+        a.href="#"+item.element.id;
+        a.innerText=item.text;
         root.appendChild(li);
         if(item.subheadings && item.subheadings.length>0)
         {
@@ -103,19 +106,20 @@ gobutton.addEventListener("click",(e)=>{
     let scraper = new HTMLPeeler(inputframe.contentDocument.body);
     scraper.depth=ad.checked?-1:depthslider.value;
     console.log(scraper.depth);
-     let doc = scraper.scrape();
+    let doc = scraper.scrape();
+    doc.trim(skipfirst.value,skiplast.value);
     //console.error("DONE SCRAPING WITH CLASS");
     
     output.innerHTML="";
-    let formatter = new HTMLFormatter(scraper.blocks);
+    let formatter = new HTMLFormatter(doc);
     console.log(doc.headers);
     console.log(doc.outline);
-    formatter.outputHTMLDoc(output,skipfirst.value,skiplast.value);
+    formatter.outputHTMLDoc(output);
     // scraper.outputHTMLDoc(output,skipfirst.value,skiplast.value);
     toc.innerHTML="";
     let headers = formatter.headers;
     //console.log(formatter.images);
-    let tree = doc.outline;
+    let tree = formatter.outline;
     makeNestedList(toc,tree);
     console.log(doc);
 });

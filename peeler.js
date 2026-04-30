@@ -1,7 +1,15 @@
-class HTMLFormatter
+class MDFormatter
 {
     #doc = null;
     #headers = [];
+    #images = [];
+}
+
+class HTMLFormatter
+{
+    #doc = null;
+    headers = [];
+    outline = [];
     #images = [];
     /* ------------------ *\
      *                    *
@@ -15,6 +23,9 @@ class HTMLFormatter
     constructor(doc)
     {
         this.#doc=doc;
+        this.headers=this.#doc.headers;
+        this.images=this.#doc.images;
+        this.outline=this.#doc.outline;
     }
     /**
      * Formats the document as HTML and inserts into target element
@@ -22,12 +33,9 @@ class HTMLFormatter
      * @param {number} skipfirst Amount of blocks to skip from the beginning
      * @param {number} skiplast Amount of blocks to skip from the end
      */
-    outputHTMLDoc(output, skipfirst, skiplast)
+    outputHTMLDoc(output)
     {
-        let outdoc = this.#doc.slice(skipfirst,skiplast==0?undefined:-skiplast);
-        this.#headers=[];
-        this.#images=[];
-        outdoc.forEach((block, i)=>{
+        this.#doc.blocks.forEach((block, i)=>{
             if(block.isEmpty())
             {
                 //console.log("Skipping empty block "+i);
@@ -62,21 +70,22 @@ class HTMLFormatter
             }
         });
     }
+    /*
     /**
      * Returns a list of images, as tuples of [URL, HTML Element of the img tag]
-     */
+     * /
     get images()
     {
         return [...this.#images];
     }
     /**
      * Returns a list of header anchor names, as tuples of [header text, HTML Element]
-     */
+     * /
     get headers()
     {
         return [...this.#headers];
     }
-    
+    //*/
     /* ------------------ *\
      *                    *
      *     HTML output    *
@@ -201,8 +210,12 @@ class HTMLFormatter
         this.outputHTMLText(block,e);
         // e.innerText=block.content;
         e.dataset.num=i;
-        e.id="header"+this.#headers.length;
-        this.#headers.push([e.textContent,e]);
+        let ho = StructuredDocument.findOutlineHeaderByIndex(this.outline,i);
+        if(ho)
+        {
+            ho.element = e;
+        }
+        e.id="header"+i;
         outputElement.appendChild(e);
     }
     outputParagraph(block, i, outputElement)
@@ -655,7 +668,8 @@ class StructuredDocument
     #blocks = [];
     
     title = "";
-
+    #slice_start = 0;
+    #slice_end = 0;
     constructor(blocks=[])
     {
         this.#blocks=[...blocks];
@@ -675,15 +689,21 @@ class StructuredDocument
         }
     }
 
+    trim(start=0,end=0)
+    {
+        this.#slice_start = start;
+        this.#slice_end = end;
+    }
+
     get blocks()
     {
-        return [...this.#blocks];
+        return [...(this.#blocks.slice(this.#slice_start,this.#slice_end==0?undefined:-this.#slice_end))];
     }
 
     get headers()
     {
         let result = [];
-        this.#blocks.forEach((b,i)=>{
+        this.blocks.forEach((b,i)=>{
             if(b.type=="header")
             {
                 //b.text="aaaa";
@@ -744,10 +764,31 @@ class StructuredDocument
         return root;
     }
 
+    static findOutlineHeaderByIndex(tree, index)
+    {
+        if(!tree || !tree.forEach)
+        {
+            return null;
+        }
+        for(let i=0;i<tree.length;i++)
+        {
+            if(tree[i].index == index)
+            {
+                return tree[i];
+            }
+            let result = StructuredDocument.findOutlineHeaderByIndex(tree[i].subheadings,index);
+            if(result)
+            {
+                return result;
+            }
+        }
+        return null;
+    }
+
     get images()
     {
         let imglist = [];
-        this.#blocks.forEach((b)=>{
+        this.blocks.forEach((b)=>{
             let blockimages = b.images;
             if(blockimages && blockimages.length>0)
             {
