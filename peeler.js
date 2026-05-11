@@ -552,19 +552,26 @@ class DocumentBlock
         }
     }
 
+    static getTextFromElements(elementList)
+    {
+        if(!elementList || elementList.length<0)
+            return false;
+        let accumulator = "";
+        elementList.forEach((e)=>{
+            if(e.text)
+                accumulator+=e.text;
+        });
+        accumulator = accumulator.trim();
+        return accumulator;
+    } 
+
     get text()
     {
         if(!this.elements)
             return "";
         if(this.elements.length<1)
             return "";
-        let accumulator = "";
-        this.elements.forEach((e)=>{
-            if(e.text)
-                accumulator+=e.text;
-        });
-        accumulator = accumulator.trim();
-        return accumulator;
+        return DocumentBlock.getTextFromElements(this.elements);
     }
 
     get images()
@@ -660,6 +667,21 @@ class DocumentList extends DocumentBlock
                 this.listType = listType;
         }
         this.items = items?[...items]:[];
+    }
+
+    isEmpty()
+    {
+        if(this.items.length<1)
+        {
+            return true;
+        }
+        let accumulator = "";
+        this.items.forEach((li)=>{
+            accumulator+=DocumentBlock.getTextFromElements(li.elements);
+        });
+        if(accumulator=="")
+            return true;
+        return false;
     }
     postProcess()
     {
