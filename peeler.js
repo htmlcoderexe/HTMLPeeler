@@ -96,7 +96,7 @@ class DocFormatter
     {
         
     }
-    outputQuote(block, i, output)
+    outputBlockQuote(block, i, output)
     {
         
     }
@@ -249,7 +249,17 @@ class EditorJSFormatter extends DocFormatter
     }
     outputImage(block, i, output)
     {
-        
+        let obj = {
+            type:"image",
+            data:{
+                caption: "",
+                url: 0
+            }
+        };
+        obj.data.caption = this.elementsToText(block.elements);
+        obj.data.url = block.src;
+        obj.data.num = i;
+        output.blocks.push(obj);
     }
     outputList(block, i, output)
     {
@@ -281,7 +291,7 @@ class EditorJSFormatter extends DocFormatter
     {
         
     }
-    outputQuote(block, i, output)
+    outputBlockQuote(block, i, output)
     {
         
     }
@@ -1348,9 +1358,10 @@ class HTMLPeeler
         let TN = element.nodeName;
         
         // h1..7
-        if(TN[0]=="H" && TN.length==2 && this.#currentblock)
+        if(TN[0]=="H" && TN.length==2 && this.#currentblock && this.#currentblock.type!="header")
         {
             //HTMLPeeler.simplify(this.#currentblock);
+            console.log(this.#currentblock);
             this.#doc.push(this.#currentblock);
             let newblock =  DocumentBlock.continue(this.#currentblock);
             let comp = new DocumentHeader(Number.parseInt(TN[1]));
