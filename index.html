@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/list@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/header@latest"></script>
 </head>
 <body>
 <style type="text/css">
@@ -69,8 +72,24 @@
 <div id="targetcontainer"><iframe sandbox="allow-same-origin" id="target" srcdoc="<!doctype html><head></head><body contenteditable>a</body></html>"></iframe><iframe id="target2"></iframe></div><ul id="depthinfo"></ul><ol id="toc"></ol><br />
 <input type="checkbox" id="autodetect" /><input type="range" min="0" max="10" id="scraperdepth" /><span>Skip first </span><input type="number" id="skipfirst" value="0" /><span> and last </span><input value="0" type="number" id="skiplast" /><span> blocks.</span>
 <br /><button id="scrape">go</button>
+<div id="editorjs"></div>
 <div id="output"></div>
-<script>
+<script type="module">
+function editor(data){
+    var editor = new EditorJS({
+        tools: {
+            list: {
+                class: EditorjsList,
+                inlineToolbar: true,
+                config: {
+                    defaultStyle: 'unordered'
+                },
+            },
+            header: Header,
+        },
+        data: data
+    });
+}
 // pasting area
 let inputframe=document.getElementById("target");
 // settings
@@ -108,6 +127,7 @@ gobutton.addEventListener("click",(e)=>{
         blocks:[]
     };
     ejsformatter.outputDoc(ejsdoc);
+    editor(ejsdoc);
     formatter.outputDoc(output);
     formatter.outputTOC(toc);
     // output results to console for debugging and admiration

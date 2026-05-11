@@ -232,11 +232,20 @@ class EditorJSFormatter extends DocFormatter
         obj.data.text= this.elementsToText(block.elements);
         obj.data.num = i;
         output.blocks.push(obj);
-        
     }
     outputHeader(block, i, output)
     {
-        
+        let obj = {
+            type:"header",
+            data:{
+                text: "",
+                level: 0
+            }
+        };
+        obj.data.text = this.elementsToText(block.elements);
+        obj.data.level = block.level;
+        obj.data.num = i;
+        output.blocks.push(obj);
     }
     outputImage(block, i, output)
     {
@@ -244,7 +253,25 @@ class EditorJSFormatter extends DocFormatter
     }
     outputList(block, i, output)
     {
-        
+        let obj = {
+            type:"list",
+            data:{
+                style: "unordered",
+                items: []
+            }
+        };
+        obj.data.style = block.listType;
+        obj.data.num = i;
+        block.items.forEach((item)=>{
+            let li = {
+                content: "",
+                meta: {},
+                items: []
+            }
+            li.content = this.elementsToText(item);
+            obj.data.items.push(li);
+        });
+        output.blocks.push(obj);
     }
     outputTable(block, i, output)
     {
@@ -293,6 +320,11 @@ class HTMLFormatter extends DocFormatter
     static outputTOCBranch(output, branch)
     {
         branch.forEach((item)=>{
+            if(!item.element)
+            {
+                console.log(item);
+                return;
+            }
             let li = output.ownerDocument.createElement("li");
             let a = output.ownerDocument.createElement("a");
             li.appendChild(a);
