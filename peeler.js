@@ -277,7 +277,7 @@ class EditorJSFormatter extends DocFormatter
                 content: "",
                 meta: {},
                 items: []
-            }
+            };
             li.content = this.elementsToText(item);
             obj.data.items.push(li);
         });
@@ -285,6 +285,23 @@ class EditorJSFormatter extends DocFormatter
     }
     outputTable(block, i, output)
     {
+        let obj = {
+            type:"table",
+            data:{
+                withHeadings: true,
+                content: []
+            }
+        };
+        obj.data.style = block.listType;
+        obj.data.num = i;
+        block.rows.forEach((row)=>{
+            let tr = [];
+            row.forEach((col)=>{
+                tr.push(this.elementsToText(col));
+            });
+            obj.data.content.push(tr);
+        });
+        output.blocks.push(obj);
         
     }
     outputCodeBlock(block, i, output)
