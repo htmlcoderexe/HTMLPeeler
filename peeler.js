@@ -306,11 +306,28 @@ class EditorJSFormatter extends DocFormatter
     }
     outputCodeBlock(block, i, output)
     {
+        let obj = {
+            type:"code",
+            data:{
+                code: ""
+            }
+        };
+        obj.data.code= this.elementsToText(block.elements);
+        obj.data.num = i;
+        output.blocks.push(obj);
         
     }
     outputBlockQuote(block, i, output)
     {
-        
+        let obj = {
+            type:"quote",
+            data:{
+                text: ""
+            }
+        };
+        obj.data.text= this.elementsToText(block.elements);
+        obj.data.num = i;
+        output.blocks.push(obj);
     }
     outputEmbed(block, i, output)
     {
