@@ -102,13 +102,20 @@ gobutton.addEventListener("click",(e)=>{
     doc.trim(skipfirst.value,skiplast.value);
     // prepare and run formatter
     let formatter = new HTMLFormatter(doc);
-    formatter.outputHTMLDoc(output);
+    let ejsformatter = new EditorJSFormatter(doc);
+    let ejsdoc = {
+        time: 0,
+        blocks:[]
+    };
+    ejsformatter.outputDoc(ejsdoc);
+    formatter.outputDoc(output);
     formatter.outputTOC(toc);
     // output results to console for debugging and admiration
     console.log(doc.images);
     console.log(doc.headers);
     console.log(formatter.outline);
     console.log(doc);
+    console.log(ejsdoc);
 });
 // moving the slider shows a preview of detected tags on given depth
 depthslider.addEventListener("input",(e)=>{
