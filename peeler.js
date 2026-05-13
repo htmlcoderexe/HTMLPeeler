@@ -1161,8 +1161,9 @@ class HTMLPeeler
     #container = null;
     #doc = [];
     #workingset = null;
-    #depth = 0;
+    #depth = -1;
     #currentblock = null;
+    filters = {};
     /* ------------------ *\
      *                    *
      *     Public API     *
@@ -1177,14 +1178,12 @@ class HTMLPeeler
      */
     set depth(value)
     {
-        //console.log(value);
-        if(value==-1)
-        {
-            this.autodetect();
-            return;
-        }
-        this.#depth=value;
-        this.#workingset = HTMLPeeler.flatten(this.#container.childNodes,this.#depth);
+        // set the private field first
+        this.#depth = value;
+        // then reload working set
+        // if -1 for autodetect, the below ignores initial #depth
+        // once completed, #depth is equal to whatever was autodetected
+        this.refreshWorkingSet(value);
     }
     get depth()
     {
@@ -1223,11 +1222,62 @@ class HTMLPeeler
                 result.push(b.level);
         });
     }
-    scrape()
+    /**
+     * Prepares the current working set of nodes to process into blocks
+     * @param {int} value depth to search, -1 to autodetect and set depth
+     * @returns 
+     */
+    refreshWorkingSet(value=null)
+    {
+        if(value==null)
+        {
+            value = this.#depth;
+        }
+        if(value==-1)
+        {
+            this.autodetect();
+            return;
+        }
+        this.#workingset = HTMLPeeler.loadWorkingSet(this.#container,this.#depth,this.filters);
+    }
+
+    static loadWorkingSet(container,depth, filters)
+    {
+    console.log("with container",container,depth,filters);
+        let node = container;
+        let candidateArray = [];
+        if(!node || !node.childNodes || node.childNodes.length < 1)
+        {
+            return [];
+        }
+        if(filters)
+        {
+            if(filters.articleSelector && filters.articleSelector!="")
+            {
+                node = container.querySelector(filters.articleSelector);
+                candidateArray = node?.childNodes;
+            }
+            else if(filters.blockSelector && filters.blockSelector!="")
+            {
+                candidateArray = container.querySelectorAll(filters.blockSelector);
+            }
+        }
+        if(!candidateArray || candidateArray.length < 1)
+        {
+            return [];
+        }
+        return HTMLPeeler.flatten(candidateArray,depth);
+    }
+
+    scrape(nocheck = false)
     {
         if(!this.#container)
         {
             return null;
+        }
+        if(!nocheck && (!this.#workingset || this.#workingset.length<1))
+        {
+            this.refreshWorkingSet();
         }
         this.#doc = new StructuredDocument();
         // contents = e.querySelectorAll("p, h1, h2, h3, h4, h5, h6,  header, blockquote, ul, ol, dl, table");
@@ -1275,11 +1325,17 @@ class HTMLPeeler
         console.log("trying to autodetect...");
         let headersmax=0;
         let maxdepth=0;
+        let filters = {};
+        if(this.articleSelector!="")
+        {
+            filters.articleSelector = this.articleSelector;
+        }
+        
         for(let i=0;i<10;i++)
         {
             console.log("trying level "+i+"...");
-            this.#workingset = HTMLPeeler.flatten(this.#container.childNodes,i);
-            this.scrape();
+            this.#workingset = HTMLPeeler.loadWorkingSet(this.#container,i,this.filters);
+            this.scrape(true);
             let headers=0;
             this.#doc.blocks.forEach((b)=>{
                 if(b.type=="header")
@@ -1293,7 +1349,7 @@ class HTMLPeeler
             }
         }
         this.#depth=maxdepth;
-        this.#workingset = HTMLPeeler.flatten(this.#container.childNodes,this.#depth);
+        this.#workingset = HTMLPeeler.loadWorkingSet(this.#container,this.#depth,this.filters);
         console.log("depth is now "+maxdepth+"");
     }
 

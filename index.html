@@ -73,39 +73,50 @@
 }
 </style>
 <script src="peeler.js"></script>
-<div id="targetcontainer"><iframe sandbox="allow-same-origin" id="target" srcdoc="<!doctype html><head></head><body contenteditable>a</body></html>"></iframe><iframe id="target2"></iframe></div><ul id="depthinfo"></ul><ol id="toc"></ol><br />
-<input type="checkbox" id="autodetect" /><input type="range" min="0" max="10" id="scraperdepth" /><span>Skip first </span><input type="number" id="skipfirst" value="0" /><span> and last </span><input value="0" type="number" id="skiplast" /><span> blocks.</span>
+<div id="targetcontainer"><iframe sandbox="allow-same-origin" id="target" srcdoc="<!doctype html><head></head><body contenteditable>a</body></html>"></iframe></div>
+<ul id="depthinfo"></ul>
+<ol id="toc"></ol>
+<br />
+<input type="checkbox" id="autodetect" />
+<input type="range" min="0" max="10" id="scraperdepth" />
+<span>Skip first </span>
+<input type="number" id="skipfirst" value="0" />
+<span> and last </span>
+<input value="0" type="number" id="skiplast" />
+<span> blocks.</span>
+<input value="" id="articleSelector" placeholder="Selector for the main article element" />
+<input value="" id="blockSelector" placeholder="Selector for the block elements" />
 <br /><button id="scrape">go</button>
 <div id="editorjs"></div>
 <div id="output"></div>
 <script type="module">
-function editor(data){
-    var editor = new EditorJS({
-        tools: {
-            list: {
-                class: EditorjsList,
-                inlineToolbar: true,
-                config: {
-                    defaultStyle: 'unordered'
-                },
-            },
-            header: Header,
-            image: SimpleImage,
-            table: Table,
-            quote: {
-                class: Quote,
-                inlineToolbar: true,
-                config: {
-                    quotePlaceholder: 'Enter a quote',
-                    captionPlaceholder: '',
-                },
-            },
-            code: {
-                class: CodeTool,
+var jseditor = new EditorJS({
+    tools: {
+        list: {
+            class: EditorjsList,
+            inlineToolbar: true,
+            config: {
+                defaultStyle: 'unordered'
             },
         },
-        data: data
-    });
+        header: Header,
+        image: SimpleImage,
+        table: Table,
+        quote: {
+            class: Quote,
+            inlineToolbar: true,
+            config: {
+                quotePlaceholder: 'Enter a quote',
+                captionPlaceholder: '',
+            },
+        },
+        code: {
+            class: CodeTool,
+        },
+    }
+});
+function editor(data){
+    jseditor.render(data);
 }
 // pasting area
 let inputframe=document.getElementById("target");
@@ -114,6 +125,8 @@ let ad = document.getElementById("autodetect");
 let depthslider = document.getElementById("scraperdepth");
 let skiplast = document.getElementById("skiplast");
 let skipfirst = document.getElementById("skipfirst");
+let as = document.getElementById("articleSelector");
+let bs = document.getElementById("blockSelector");
 // runs the peeler/formatter
 let gobutton=document.getElementById("scrape");
 // outputs
@@ -130,6 +143,8 @@ gobutton.addEventListener("click",(e)=>{
     toc.innerHTML="";
     // init peeler with given settings
     let scraper = new HTMLPeeler(inputframe.contentDocument.body);
+    scraper.filters.articleSelector = as.value;
+    scraper.filters.blockSelector = bs.value;
     // autodetect mode or manual
     scraper.depth=ad.checked?-1:depthslider.value;
     // run peeler
@@ -158,6 +173,8 @@ gobutton.addEventListener("click",(e)=>{
 depthslider.addEventListener("input",(e)=>{
     depthinfo.innerHTML="";
     let scraper=new HTMLPeeler(inputframe.contentDocument.body);
+    scraper.filters.articleSelector = as.value;
+    scraper.filters.blockSelector = bs.value;
     scraper.depth=depthslider.value;
     let tags = scraper.tagList;
     Object.entries(tags).forEach((tag)=>{
