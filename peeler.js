@@ -127,6 +127,7 @@ class EditorJSFormatter extends DocFormatter
         {
             return "";
         }
+        console.log(elements);
         let container = document.createElement("div");
         let lastElement=container;
         let currentImg=null;
@@ -263,6 +264,11 @@ class EditorJSFormatter extends DocFormatter
     }
     outputList(block, i, output)
     {
+        if(block.listType=="definition")
+        {
+            // Unsupported as of now
+            return;
+        }
         let obj = {
             type:"list",
             data:{
@@ -1250,6 +1256,7 @@ class HTMLPeeler
         {
             return [];
         }
+        candidateArray = node.childNodes;
         if(filters)
         {
             if(filters.articleSelector && filters.articleSelector!="")
